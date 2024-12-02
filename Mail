@@ -1,0 +1,21 @@
+**Objet : Demande de disponibilité pour point d'échange – Partage JWK et gestion de tokens JWS**
+
+Bonjour [Nom/Équipe],  
+
+Je me permets de vous écrire pour organiser un point d’échange afin de clarifier et avancer sur deux sujets importants concernant nos intégrations entre Apigee et Ping, ainsi que la gestion des tokens pour le backend API.  
+
+### **1. Partage de fichier JWK pour chiffrement des tokens**  
+Nous souhaitons partager un fichier JWK contenant les clés nécessaires pour que Ping puisse correctement chiffrer les tokens utilisés dans notre environnement. Ce point permettra de valider les configurations nécessaires côté Ping et Apigee pour garantir un échange sécurisé des tokens.  
+
+### **2. Transmission du token JWS jusqu’au backend API**  
+Actuellement, nous devons nous assurer que le token JWS généré par Apigee est véhiculé jusqu’à notre backend API sans altération. Ce point inclura la validation des headers et payload requis ainsi que toute étape additionnelle pour préserver l'intégrité du token.  
+
+Pouvez-vous, s’il vous plaît, m’indiquer vos disponibilités pour un échange à ce sujet ? Nous pouvons également proposer quelques créneaux qui conviendraient à notre équipe si besoin.  
+
+Merci d’avance pour votre retour. Je reste à votre disposition pour toute information complémentaire.  
+
+Bien cordialement,  
+[Votre prénom et nom]  
+[Votre rôle]  
+[Votre société]  
+[Vos coordonnées, si nécessaires]  
