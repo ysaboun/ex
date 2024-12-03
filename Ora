@@ -1,0 +1,10 @@
+DELETE FROM tokens
+WHERE id NOT IN (
+    SELECT id
+    FROM (
+        SELECT id
+        FROM tokens
+        ORDER BY created_date DESC
+        FETCH FIRST 1 ROW ONLY
+    )
+);
