@@ -1,0 +1,11 @@
+DELETE FROM token
+WHERE token_id NOT IN (
+  SELECT token_id
+  FROM (
+    SELECT token_id,
+           ROW_NUMBER() OVER (PARTITION BY username ORDER BY date_created DESC) AS rn
+    FROM token
+    WHERE username IN (<liste_utilisateurs>)
+  )
+  WHERE rn = 1
+);
