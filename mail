@@ -1,0 +1,25 @@
+**Objet** : Demande d'ajustement et de clonage du PoC Service Worker pour intégration dans le projet Auth Ping  
+
+**Bonjour [Nom de l’équipe ou personne responsable],**  
+
+J’espère que vous allez bien.  
+
+Dans le cadre du projet d’intégration de la nouvelle mire d’authentification utilisant Ping comme Identity Provider (IdP) et Apigee comme gateway des APIs, je souhaite profiter des travaux réalisés par votre équipe sur le PoC du service worker pour les versions Angular et React. Votre démarche pour sécuriser l’authentification SSO selon les standards OAuth 2 et OIDC est alignée avec nos besoins et constitue une base idéale pour garantir l'harmonisation et la sécurité des parcours web dans notre projet.  
+
+**Besoin spécifique pour le projet Auth Ping**  
+L’objectif est de cloner et d’ajuster une version dédiée de ce PoC pour les spécificités de notre projet, avec les adaptations nécessaires pour :  
+1. **Authentification via Ping IdP** :  
+   - Gestion de l’authentification utilisateur via le service worker.  
+   - Stockage sécurisé et renouvellement des tokens à l’aide des refresh tokens.  
+
+2. **Interaction avec Apigee** :  
+   - Interception des requêtes depuis les Single Page Applications (SPA) Angular et React.  
+   - Ajout automatique du `Bearer token` dans le header `Authorization` pour toutes les requêtes vers la gateway Apigee.  
+
+**Charge de configuration et ajustement**  
+Je vous propose que l’imputation de la charge de configuration et d’ajustement soit prise en charge sur l’item dédié au projet Auth Ping. Une coordination avec votre équipe sera bien sûr assurée pour faciliter le transfert des connaissances et valider les étapes d’intégration.  
+
+N’hésitez pas à revenir vers moi pour organiser une réunion afin de discuter des détails techniques ou logistiques nécessaires à la mise en œuvre. Je reste disponible pour répondre à vos questions et clarifier davantage les attentes liées à ce besoin.  
+
+Merci pour votre collaboration précieuse,  
+  
