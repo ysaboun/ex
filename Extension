@@ -1,0 +1,143 @@
+Voici d'autres permissions disponibles pour les extensions de navigateur, avec leurs utilisations principales et les risques associés :
+
+---
+
+### **1. `cookies`**
+**Permet :**
+- Lire, écrire, ou modifier les cookies d’un site web.
+- Accéder à des informations de session (comme les identifiants d'utilisateur).
+
+**Risques :**
+- **Vol d'identité :** Une extension malveillante peut accéder aux cookies contenant des informations sensibles, comme des tokens d'authentification.
+- **Traçage :** Les cookies peuvent être utilisés pour suivre l'utilisateur sur plusieurs sites.
+
+---
+
+### **2. `downloads`**
+**Permet :**
+- Gérer les téléchargements, y compris démarrer, suspendre, ou annuler des téléchargements.
+- Accéder au chemin des fichiers téléchargés.
+
+**Risques :**
+- **Téléchargements malveillants :** Une extension pourrait initier le téléchargement de logiciels malveillants sans le consentement de l'utilisateur.
+- **Accès non autorisé :** Une extension pourrait collecter des informations sur les fichiers téléchargés par l'utilisateur.
+
+---
+
+### **3. `history`**
+**Permet :**
+- Accéder à l'historique de navigation de l'utilisateur.
+- Ajouter ou supprimer des entrées dans l'historique.
+
+**Risques :**
+- **Surveillance :** Une extension malveillante peut collecter des informations détaillées sur les sites visités, compromettant la confidentialité.
+- **Modification frauduleuse :** Une extension pourrait modifier l'historique pour masquer des visites indésirables ou créer des redirections trompeuses.
+
+---
+
+### **4. `geolocation`**
+**Permet :**
+- Accéder à la position géographique de l'utilisateur via l'API de géolocalisation du navigateur.
+
+**Risques :**
+- **Atteinte à la vie privée :** La collecte de données de localisation peut être utilisée pour suivre les mouvements physiques de l'utilisateur.
+- **Ciblage publicitaire :** Ces données pourraient être revendues à des tiers pour créer des profils marketing.
+
+---
+
+### **5. `bookmarks`**
+**Permet :**
+- Lire, ajouter, modifier ou supprimer les favoris (bookmarks) de l'utilisateur.
+
+**Risques :**
+- **Collecte d'informations personnelles :** Une extension malveillante pourrait analyser les favoris pour obtenir des informations sur les habitudes de navigation.
+- **Perte de données :** Une extension malveillante ou boguée pourrait supprimer ou corrompre les favoris.
+
+---
+
+### **6. `clipboardRead` et `clipboardWrite`**
+**Permet :**
+- Lire ou écrire dans le presse-papiers (clipboard) de l'utilisateur.
+
+**Risques :**
+- **Vol de données :** Une extension peut surveiller le contenu du presse-papiers et collecter des informations sensibles comme des mots de passe ou des numéros de carte bancaire.
+- **Injection de contenu :** Une extension malveillante pourrait écrire du contenu non désiré dans le presse-papiers.
+
+---
+
+### **7. `proxy`**
+**Permet :**
+- Configurer ou modifier les paramètres proxy du navigateur pour rediriger le trafic réseau.
+
+**Risques :**
+- **Interception de trafic :** Une extension malveillante pourrait rediriger le trafic vers un serveur malveillant pour voler des données sensibles.
+- **Violation de confidentialité :** Le trafic réseau pourrait être enregistré ou analysé à l'insu de l'utilisateur.
+
+---
+
+### **8. `alarms`**
+**Permet :**
+- Planifier des tâches ou des rappels pour exécuter des actions à intervalles réguliers.
+
+**Risques :**
+- **Utilisation excessive des ressources :** Une mauvaise utilisation de cette permission peut ralentir le navigateur ou consommer des ressources inutiles.
+- **Surveillance constante :** Une extension pourrait surveiller l'utilisateur en permanence.
+
+---
+
+### **9. `host_permissions` (Anciennement `permissions` dans le manifeste)**
+**Permet :**
+- Accéder à des pages spécifiques ou à tous les sites web visités par l'utilisateur.
+- Injecter du code ou collecter des données sur les pages ciblées.
+
+**Risques :**
+- **Accès non restreint :** Si mal configurée, l'extension pourrait accéder à tout le contenu de navigation de l'utilisateur.
+- **Malveillance :** Une extension malveillante peut collecter ou manipuler des données sensibles sur des sites spécifiques (banques, réseaux sociaux).
+
+---
+
+### **10. `management`**
+**Permet :**
+- Gérer d'autres extensions installées (désactiver ou désinstaller).
+
+**Risques :**
+- **Manipulation des extensions :** Une extension malveillante pourrait désactiver des extensions de sécurité ou installer des extensions non souhaitées.
+
+---
+
+### **11. `identity`**
+**Permet :**
+- Gérer l'authentification des utilisateurs via des fournisseurs OAuth (comme Google ou Microsoft).
+
+**Risques :**
+- **Imposture :** Une extension pourrait utiliser cette permission pour se faire passer pour l'utilisateur et accéder à des services tiers.
+- **Fuite d'informations personnelles :** Les jetons d'authentification peuvent être interceptés ou mal protégés.
+
+---
+
+### **12. `webRequest`**
+**Permet :**
+- Intercepter, observer et modifier les requêtes réseau (HTTP/HTTPS).
+
+**Risques :**
+- **Espionnage :** Une extension malveillante peut enregistrer les données des requêtes, y compris les informations sensibles comme les mots de passe ou les données de paiement.
+- **Modification du trafic :** Une extension pourrait injecter du contenu non désiré ou rediriger l'utilisateur vers des sites malveillants.
+
+---
+
+### **13. `notifications`**
+**Permet :**
+- Afficher des notifications système ou dans le navigateur.
+
+**Risques :**
+- **Spam :** Une extension peut générer des notifications excessives ou indésirables.
+- **Phishing :** Des notifications trompeuses peuvent inciter l'utilisateur à cliquer sur des liens dangereux.
+
+---
+
+### **Bonnes pratiques pour gérer les permissions**
+- **Analyser la description des permissions** : Avant d'installer une extension, vérifiez si les permissions demandées correspondent réellement à ses fonctionnalités.
+- **Limiter l'utilisation des extensions** : N'installez que des extensions provenant de sources fiables et régulièrement mises à jour.
+- **Révocation des permissions** : Désactivez ou désinstallez les extensions inutilisées.
+
+Si vous voulez des précisions sur une permission ou des exemples d'utilisation, je peux approfondir le sujet !
