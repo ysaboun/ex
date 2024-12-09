@@ -1,0 +1,93 @@
+Voici une explication des permissions des extensions de navigateur que vous mentionnez, ce qu'elles permettent de faire, et les risques associés à chacune.
+
+---
+
+### **1. `storage`**
+**Permet :**
+- Stocker des données localement dans le navigateur (par exemple, préférences utilisateur, historique de l'extension).
+- Synchroniser les données entre plusieurs appareils de l'utilisateur via les services de synchronisation du navigateur.
+
+**Risques :**
+- **Confidentialité :** Si des données sensibles sont mal gérées ou accessibles sans protection.
+- **Exploitation par un tiers :** Un accès non sécurisé au stockage pourrait exposer des informations importantes (par exemple, des tokens ou des mots de passe).
+
+---
+
+### **2. `activeTab`**
+**Permet :**
+- Accéder temporairement à l'onglet actif (la page web en cours) après une interaction utilisateur (par exemple, un clic sur l'icône de l'extension).
+- Lire le contenu de la page (HTML, CSS, JavaScript) et injecter du code (scripts ou CSS) dans cet onglet.
+
+**Risques :**
+- **Vol de données utilisateur :** L'extension peut lire et envoyer des données sensibles présentes sur la page (mots de passe, identifiants).
+- **Manipulation de contenu :** Du code malveillant peut être injecté pour afficher de fausses informations ou collecter des données utilisateur.
+
+---
+
+### **3. `tabs`**
+**Permet :**
+- Accéder aux informations des onglets ouverts (URL, titre, état de chargement, etc.).
+- Créer, fermer, ou modifier des onglets.
+- Interagir avec plusieurs onglets simultanément, pas seulement celui actif.
+
+**Risques :**
+- **Surveillance des activités :** L'extension peut enregistrer les URL de tous les onglets, créant un historique détaillé des habitudes de navigation de l'utilisateur.
+- **Collecte non autorisée :** Les extensions malveillantes peuvent exploiter cette permission pour voler des données sensibles à partir des pages ouvertes.
+
+---
+
+### **4. `webNavigation`**
+**Permet :**
+- Observer et intercepter les événements de navigation (par exemple, chargement d'une page, redirection).
+- Suivre le comportement de l'utilisateur en ligne en temps réel.
+
+**Risques :**
+- **Suivi des utilisateurs :** Une extension peut collecter l'historique de navigation en temps réel, compromettant la confidentialité.
+- **Blocage ou détournement :** L'extension pourrait modifier les actions de navigation, comme rediriger l'utilisateur vers un site malveillant ou bloquer l'accès à certaines pages.
+
+---
+
+### **5. `scripting`**
+**Permet :**
+- Injecter du code JavaScript ou CSS dans les pages web.
+- Modifier dynamiquement les pages web visitées.
+
+**Risques :**
+- **Injection malveillante :** Du code malveillant peut être inséré pour collecter des informations personnelles ou manipuler le contenu des pages visitées.
+- **Violation de confidentialité :** Des données sensibles présentes sur une page (comme des formulaires) peuvent être exfiltrées via un script injecté.
+
+---
+
+### **6. `notifications`**
+**Permet :**
+- Afficher des notifications système ou dans le navigateur.
+- Envoyer des alertes ou des rappels à l'utilisateur.
+
+**Risques :**
+- **Spam :** Une extension malveillante peut afficher un grand nombre de notifications non désirées.
+- **Phishing :** Des notifications trompeuses peuvent inciter les utilisateurs à cliquer sur des liens menant à des sites malveillants.
+
+---
+
+### **7. `nativeMessaging`**
+**Permet :**
+- Communiquer avec des applications natives installées sur l'ordinateur de l'utilisateur.
+- Transmettre des données entre l'extension et des applications locales (par exemple, des outils de sécurité ou de gestion).
+
+**Risques :**
+- **Escalade de privilèges :** Si l'application native a accès à des ressources sensibles (fichiers système, réseau), une extension malveillante pourrait exploiter cette permission pour y accéder.
+- **Fuites de données :** Une mauvaise implémentation peut permettre à l'application native de collecter ou de transmettre des données sensibles sans le consentement explicite de l'utilisateur.
+
+---
+
+### **Bonnes pratiques pour minimiser les risques**
+1. **Limiter les permissions demandées** :
+   - Une extension doit demander uniquement les permissions strictement nécessaires à son fonctionnement.
+2. **Éviter les extensions de sources non vérifiées** :
+   - Installez uniquement des extensions depuis des sources officielles (Chrome Web Store, Firefox Add-ons, etc.).
+3. **Revoir les permissions accordées** :
+   - Vérifiez régulièrement les permissions des extensions installées via les paramètres du navigateur.
+4. **Surveillance de l’activité des extensions** :
+   - Les navigateurs comme Chrome affichent les extensions actives dans un onglet dédié, ce qui permet de surveiller leur activité.
+
+Si vous développez ou utilisez une extension, il est essentiel de bien comprendre ces permissions et de vérifier leur utilisation correcte pour préserver la sécurité et la confidentialité des utilisateurs.
