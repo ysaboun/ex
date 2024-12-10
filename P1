@@ -1,0 +1,71 @@
+Pour permettre à une extension de navigateur d'ouvrir et d'interagir avec une "page de pédagogie" (ou toute autre page web), les permissions suivantes sont nécessaires :
+
+### 1. **Permission de navigation sur des pages spécifiques**
+   - Si la page est hébergée sur un domaine particulier, il faut que l'extension ait accès à ce domaine :
+     ```json
+     {
+       "permissions": ["<all_urls>", "https://example.com/*"]
+     }
+     ```
+     - `<all_urls>` : Accès à toutes les URL (à utiliser avec précaution si la page n'est pas toujours prévisible).
+     - `https://example.com/*` : Permet uniquement l'accès au domaine spécifique hébergeant la page de pédagogie.
+
+---
+
+### 2. **Permission de redirection ou d'ouverture d'onglets**
+   - Si l'extension doit ouvrir ou rediriger vers une page, elle doit pouvoir gérer les onglets :
+     ```json
+     {
+       "permissions": ["tabs"]
+     }
+     ```
+     Cela permet :
+     - L'ouverture d'une nouvelle page dans un onglet.
+     - La modification des onglets existants pour charger une page spécifique.
+
+---
+
+### 3. **Permission de communication**
+   - Si l'extension interagit avec le contenu de la page (pour extraire ou injecter des informations pédagogiques), elle aura besoin de la permission `activeTab` et de **scripts de contenu** :
+     ```json
+     {
+       "permissions": ["activeTab"]
+     }
+     ```
+
+   - Dans le fichier `manifest.json`, il faut également spécifier les scripts injectés :
+     ```json
+     {
+       "content_scripts": [
+         {
+           "matches": ["https://example.com/*"],
+           "js": ["contentScript.js"]
+         }
+       ]
+     }
+     ```
+
+---
+
+### 4. **Autorisations contextuelles**
+   - Si l'extension propose un bouton ou une action pour ouvrir la page, elle doit inclure une action contextuelle dans le `manifest.json` :
+     ```json
+     {
+       "action": {
+         "default_popup": "popup.html",
+         "default_icon": "icon.png"
+       }
+     }
+     ```
+
+---
+
+### Cas spécifiques :
+- **Si la page nécessite des authentifications** : L'extension peut avoir besoin de gérer des cookies ou des sessions (`cookies`).
+- **Si l'extension analyse la page après l'ouverture** : Il faudra inclure des permissions pour injecter des scripts ou accéder au DOM.
+
+En résumé :
+- Autorisation des URL pertinentes.
+- Gestion des onglets.
+- Scripts de contenu pour l’interaction.
+- Permissions supplémentaires selon le contexte de la page.
