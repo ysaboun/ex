@@ -1,0 +1,102 @@
+Pour qu'une extension de navigateur puisse communiquer avec une application mobile pour vérifier si l'utilisateur est connecté, plusieurs permissions et mécanismes doivent être mis en place, en fonction de la méthode de communication. Voici les détails nécessaires :
+
+---
+
+### 1. **Permission de communication avec des applications locales**  
+Si l'application mobile et l'extension doivent échanger des données directement, une communication **natif-host (Native Messaging)** peut être utilisée.
+
+#### Permissions dans `manifest.json` :
+```json
+{
+  "permissions": ["nativeMessaging"]
+}
+```
+
+#### Configuration pour l'application native :
+- Une application native sur l'appareil doit être configurée avec un fichier manifeste pour interagir avec l'extension.
+- Exemple de fichier de configuration (application native côté mobile) :
+```json
+{
+  "name": "com.example.mobileapp",
+  "description": "Communication avec l'application mobile",
+  "path": "path_to_application",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://<extension-id>/"
+  ]
+}
+```
+
+L'extension utilise cette configuration pour établir une communication.
+
+---
+
+### 2. **Permission de gestion des cookies/session**  
+Si la vérification d'état connecté dépend de cookies ou de sessions partagées entre le navigateur et l'application, il faut inclure :
+
+```json
+{
+  "permissions": ["cookies", "http://example.com/*"]
+}
+```
+
+Cela permet :
+- D'accéder aux cookies pour vérifier des jetons de session partagés.
+- D'utiliser ces informations pour déterminer si l'utilisateur est connecté.
+
+---
+
+### 3. **Permission d'interaction réseau (API REST)**  
+Si l'extension interagit avec un serveur backend commun entre le navigateur et l'application mobile (par exemple, via une API), il faut inclure :
+
+```json
+{
+  "permissions": ["webRequest", "webRequestBlocking", "http://api.example.com/*"]
+}
+```
+
+Cela permet :
+- D'envoyer des requêtes HTTP vers une API centrale.
+- D'interroger l'état de connexion de l'utilisateur.
+
+---
+
+### 4. **Permission pour WebSockets ou LocalStorage (si applicable)**  
+Si la communication utilise des WebSockets (en temps réel) ou le stockage local partagé (pour synchroniser l'état entre le navigateur et l'application mobile) :
+
+#### WebSockets :
+Aucune permission supplémentaire n'est nécessaire, mais les URL des WebSockets doivent être accessibles dans les scripts de l'extension.
+
+#### LocalStorage (ou IndexedDB) :
+```json
+{
+  "permissions": ["storage"]
+}
+```
+
+---
+
+### 5. **Scripts d’arrière-plan (Background Scripts)**  
+Un script d'arrière-plan peut être utilisé pour établir des connexions persistantes entre l'extension et l'application :
+
+#### Exemple dans `manifest.json` :
+```json
+{
+  "background": {
+    "service_worker": "background.js"
+  }
+}
+```
+
+Dans `background.js`, vous pouvez gérer les connexions et la logique pour vérifier l'état de connexion.
+
+---
+
+### Résumé des permissions nécessaires :
+1. **`nativeMessaging`** (si communication locale avec l'application mobile).
+2. **`cookies` et `http://example.com/*`** (si état connecté via cookies/sessions).
+3. **`webRequest` et `webRequestBlocking`** (si via API REST commune).
+4. **`storage`** (si stockage local ou IndexedDB utilisé).
+5. **`background`** pour exécuter la logique de communication en arrière-plan.
+
+La méthode choisie dépend de l'architecture et des besoins spécifiques de l'application mobile et du navigateur.
