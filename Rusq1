@@ -1,0 +1,93 @@
+Voici une synthèse des **risques potentiels** liés aux permissions nécessaires pour une extension Safari qui communique avec une application mobile iOS. Les risques sont présentés par type de permission et mécanisme utilisé.
+
+---
+
+### 1. **Permission `activeTab`**
+- **Risque :** Accès au contenu des onglets actifs.  
+  L'extension pourrait accidentellement ou malicieusement lire des données sensibles (ex. sessions, formulaires, données personnelles) depuis l'onglet actif.
+- **Atténuation :**
+  - Limitez l'accès uniquement lorsque l'utilisateur déclenche une action explicite.
+  - Ne stockez aucune donnée sensible localement sans cryptage.
+
+---
+
+### 2. **Permission `host_permissions` (accès à des domaines spécifiques)**
+- **Risque :** Risques d’interception ou de manipulation des données échangées entre l’extension et un domaine (par exemple, via des attaques MITM si les communications ne sont pas sécurisées).  
+  Si mal configuré, l’extension peut avoir accès à plus de domaines que nécessaire.
+- **Atténuation :**
+  - Restreignez les domaines autorisés dans le `manifest.json` uniquement à ceux nécessaires (ex. `https://api.example.com/*`).
+  - Utilisez HTTPS pour toutes les communications réseau.
+
+---
+
+### 3. **Permission `webRequest`**
+- **Risque :** Surveillance ou manipulation du trafic réseau.  
+  Cette permission permet à l’extension d’intercepter ou de bloquer des requêtes réseau, ce qui peut entraîner des abus, comme la capture d'informations sensibles.
+- **Atténuation :**
+  - Filtrez explicitement les requêtes via des règles précises dans votre code.
+  - Limitez l'utilisation de `webRequest` à des événements spécifiques et justifiés.
+
+---
+
+### 4. **Mécanisme App Groups (partage de données locales)**
+- **Risque :** Accès non autorisé aux données partagées.  
+  Toute application ou extension ayant le même identifiant App Group pourrait potentiellement lire/modifier les données partagées.
+- **Atténuation :**
+  - Limitez les données stockées dans les App Groups aux informations nécessaires et anonymisez-les si possible.
+  - Implémentez un chiffrement des données sensibles avant de les stocker.
+  - Surveillez les permissions de l’App Group pour éviter des accès non autorisés.
+
+---
+
+### 5. **URL Schemes (communication inter-applications)**
+- **Risque :** Risque d’exploitation des URL Schemes par des applications tierces.  
+  Un URL Scheme exposé pourrait être invoqué par une autre application pour déclencher des actions non sécurisées, comme falsifier des requêtes ou simuler des actions utilisateur.
+- **Atténuation :**
+  - Validez soigneusement les entrées reçues via les URL Schemes pour éviter les abus.
+  - Ajoutez une authentification ou des jetons pour vérifier que la requête provient d’une source légitime.
+
+---
+
+### 6. **WebKit Messaging**
+- **Risque :** Exposition des messages échangés.  
+  Si le JavaScript injecté dans la page web est compromis (par exemple, via une attaque XSS), des données sensibles pourraient être interceptées.
+- **Atténuation :**
+  - Vérifiez toujours l’origine et le contenu des messages échangés entre WebKit et l’application mobile.
+  - Ne traitez que les messages venant de sources fiables.
+
+---
+
+### 7. **Permission `tabs`**
+- **Risque :** Surveillance des activités de navigation.  
+  Une utilisation abusive peut entraîner la collecte ou l'analyse des onglets ouverts par l'utilisateur, portant atteinte à la vie privée.
+- **Atténuation :**
+  - Évitez toute collecte ou journalisation des activités de navigation.
+  - Activez cette permission uniquement pour les fonctionnalités nécessaires (comme ouvrir un nouvel onglet).
+
+---
+
+### Risques Généraux
+1. **Fuite de données :**
+   - Si les données échangées entre l'extension et l'application mobile ou un backend ne sont pas correctement sécurisées (ex. absence de HTTPS), elles pourraient être interceptées.
+   - **Solution :** Chiffrez toujours les données sensibles, en transit et au repos.
+
+2. **Accès non autorisé :**
+   - Des tiers malveillants pourraient exploiter des failles dans l'extension ou l'application mobile pour obtenir un accès non autorisé.
+   - **Solution :** Implémentez des contrôles d'accès stricts (ex. authentification, validation des requêtes).
+
+3. **Actions involontaires ou malveillantes :**
+   - Une configuration ou un développement incorrect pourrait permettre à l'extension d'effectuer des actions non désirées (comme ouvrir des pages web ou modifier des données utilisateur).
+   - **Solution :** Auditez régulièrement le code de l'extension pour détecter et corriger les vulnérabilités.
+
+---
+
+### Bonnes Pratiques pour Minimiser les Risques
+- **Respecter le principe du moindre privilège** : Limitez les permissions aux besoins strictement nécessaires.
+- **Validation des entrées** : Validez toutes les données reçues, qu'elles proviennent d'une page web, d'un URL Scheme, ou d'un App Group.
+- **Chiffrement** : Utilisez HTTPS pour toutes les communications réseau et chiffrez les données sensibles dans les App Groups.
+- **Journalisation et surveillance** : Implémentez des journaux d'audit pour suivre les activités critiques de l'extension et détecter toute anomalie.
+- **Mises à jour fréquentes** : Corrigez rapidement les vulnérabilités découvertes et adaptez l’extension aux nouvelles exigences de sécurité d’iOS et de Safari.
+
+---
+
+En résumé, les mécanismes comme **App Groups**, **URL Schemes**, ou **API backend** introduisent des risques spécifiques, mais ces derniers peuvent être largement atténués par une configuration rigoureuse et des pratiques de sécurité solides.
