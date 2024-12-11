@@ -1,0 +1,90 @@
+Sur iOS, les extensions Safari ne peuvent pas utiliser le mécanisme de **Native Messaging** comme sur Chrome ou d'autres navigateurs. La communication entre une application iOS et une extension Safari repose généralement sur des mécanismes spécifiques à iOS, tels que **App Groups**, **URL Schemes**, ou **WebKit Messaging**. Voici comment procéder dans le contexte d'une extension Safari et d'une application mobile iOS.
+
+---
+
+### Approche pour Safari et iOS
+
+#### 1. **Utiliser App Groups (partage local de données)**
+App Groups permettent à une application iOS et à une extension Safari de partager des données via un conteneur partagé (ex. UserDefaults ou fichiers).
+
+- **Configurer un App Group :**
+  1. Créez un identifiant d'App Group dans votre compte Apple Developer.
+  2. Activez l'App Group pour l'application iOS et l'extension Safari dans leurs paramètres de capacités Xcode.
+  3. Utilisez le conteneur partagé pour vérifier l'état de connexion.
+
+- **Code dans l'extension Safari (Swift) :**
+  ```swift
+  let sharedDefaults = UserDefaults(suiteName: "group.com.example.app")
+  if let isConnected = sharedDefaults?.bool(forKey: "userConnected") {
+      print("Utilisateur connecté : \(isConnected)")
+  }
+  ```
+
+- **Code dans l'application iOS (Swift) :**
+  ```swift
+  let sharedDefaults = UserDefaults(suiteName: "group.com.example.app")
+  sharedDefaults?.set(true, forKey: "userConnected")
+  ```
+
+---
+
+#### 2. **Utiliser des URL Schemes (communication inter-applications)**
+Vous pouvez configurer un **URL Scheme personnalisé** dans l'application iOS. L'extension Safari peut appeler ce scheme pour interagir avec l'application mobile.
+
+- **Configurer l'URL Scheme :**
+  1. Ajoutez un URL Scheme dans les paramètres Info.plist de l'application iOS :
+     ```xml
+     <key>CFBundleURLTypes</key>
+     <array>
+       <dict>
+         <key>CFBundleURLSchemes</key>
+         <array>
+           <string>exampleapp</string>
+         </array>
+       </dict>
+     </array>
+     ```
+  2. Implémentez la gestion de l'URL dans l'application mobile pour répondre à l'extension Safari.
+
+- **Code dans l'extension Safari :**
+  ```swift
+  if let url = URL(string: "exampleapp://checkConnection") {
+      UIApplication.shared.open(url)
+  }
+  ```
+
+- **Code dans l'application iOS (Swift) :**
+  ```swift
+  func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+      if url.scheme == "exampleapp" && url.host == "checkConnection" {
+          // Répondez en mettant à jour un App Group ou une autre méthode.
+          return true
+      }
+      return false
+  }
+  ```
+
+---
+
+#### 3. **Utiliser WebKit Messaging (JavaScript Bridge)**
+Safari Extensions peuvent utiliser WebKit pour communiquer avec des pages web chargées dans le navigateur, qui peuvent ensuite être utilisées pour transmettre des données à une API backend partagée avec l'application mobile.
+
+- **Dans l'extension Safari (JavaScript) :**
+  ```javascript
+  browser.runtime.sendNativeMessage("checkConnection", {}, function(response) {
+      console.log("Réponse de l'application :", response);
+  });
+  ```
+
+- **Dans l'application iOS :**
+  Implémentez un serveur backend ou une API REST qui gère les requêtes de l'extension et interagit avec l'état de l'utilisateur.
+
+---
+
+### Limitations avec Safari et iOS
+Contrairement à Chrome ou autres navigateurs, Safari sur iOS n’autorise pas directement les permissions comme `nativeMessaging`. Il est essentiel d'exploiter les outils spécifiques à l'écosystème iOS, tels que :
+- **App Groups** pour partager des données localement.
+- **URL Schemes** pour interactions simples entre l'extension et l'application.
+- **WebKit Messaging** ou **API REST** pour des communications distantes.
+
+Chaque méthode dépend de la complexité et des besoins de votre application.
