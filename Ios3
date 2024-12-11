@@ -1,0 +1,160 @@
+Pour permettre à une extension navigateur Safari de communiquer avec une application mobile iOS afin de vérifier si l'utilisateur est connecté, il faut s'appuyer sur des mécanismes spécifiques à l'écosystème Apple, car Safari Extensions sur iOS ne supporte pas directement des permissions comme **Native Messaging** utilisées dans d'autres navigateurs. Voici comment configurer et les permissions nécessaires pour ce cas :
+
+---
+
+### 1. **Permissions nécessaires pour l'extension Safari**
+
+#### a) **Gestion des onglets et accès au contenu**
+- **`activeTab`** : Permet d'accéder à l'onglet actif, nécessaire si vous devez interagir avec une page web pour déclencher la communication avec l'application mobile.
+- **`host_permissions`** : Autorise l'accès à des domaines spécifiques, par exemple pour envoyer ou recevoir des données via une API.
+
+Exemple dans le fichier `manifest.json` :
+```json
+{
+  "permissions": ["activeTab"],
+  "host_permissions": ["https://api.example.com/*"]
+}
+```
+
+---
+
+#### b) **Communication avec une API Backend (option courante)**
+
+Si l'application mobile utilise un serveur central (API REST) pour gérer l'état utilisateur, l'extension peut envoyer une requête à cette API pour vérifier si l'utilisateur est connecté.
+
+- **Permission pour les requêtes réseau** :
+  ```json
+  {
+    "permissions": ["webRequest", "https://api.example.com/*"]
+  }
+  ```
+
+- **Exemple de code pour vérifier l'état utilisateur** :
+  ```javascript
+  fetch("https://api.example.com/user/status", {
+    method: "GET",
+    headers: {
+      Authorization: "Bearer <token>"
+    }
+  })
+    .then(response => response.json())
+    .then(data => {
+      if (data.isConnected) {
+        console.log("Utilisateur connecté");
+      } else {
+        console.log("Utilisateur non connecté");
+      }
+    });
+  ```
+
+---
+
+### 2. **Interaction avec l'application iOS (sans API Backend)**
+
+Si vous souhaitez une communication directe entre l'extension et l'application mobile sur iOS, les mécanismes possibles incluent :
+
+#### a) **App Groups (partage de données locales)**
+
+App Groups permettent à une extension et une application iOS de partager des données localement.  
+- **Configurer App Groups** :
+  1. Créez un identifiant d'App Group dans le compte Apple Developer.
+  2. Activez l'App Group dans les capacités (Capabilities) de l'application et de l'extension dans Xcode.
+  3. Utilisez `UserDefaults` partagé pour stocker l'état de l'utilisateur.
+
+- **Exemple dans l'application iOS** :
+  ```swift
+  let sharedDefaults = UserDefaults(suiteName: "group.com.example.app")
+  sharedDefaults?.set(true, forKey: "isUserConnected")
+  ```
+
+- **Exemple dans l'extension Safari** :
+  ```swift
+  let sharedDefaults = UserDefaults(suiteName: "group.com.example.app")
+  if let isConnected = sharedDefaults?.bool(forKey: "isUserConnected"), isConnected {
+      print("Utilisateur connecté")
+  } else {
+      print("Utilisateur non connecté")
+  }
+  ```
+
+---
+
+#### b) **URL Schemes pour une communication directe**
+
+Les **URL Schemes personnalisés** permettent à une extension d'ouvrir l'application mobile et de recevoir une réponse.
+
+- **Configurer un URL Scheme dans l'application iOS** :
+  Ajoutez un URL Scheme dans le fichier `Info.plist` de l'application :
+  ```xml
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>exampleapp</string>
+      </array>
+    </dict>
+  </array>
+  ```
+
+- **Dans l'extension Safari** : 
+  Utilisez JavaScript pour déclencher le Scheme :
+  ```javascript
+  window.location.href = "exampleapp://checkConnection";
+  ```
+
+- **Dans l'application mobile (iOS)** :  
+  Implémentez la gestion de l'URL dans le `AppDelegate` :
+  ```swift
+  func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+      if url.scheme == "exampleapp" && url.host == "checkConnection" {
+          // Vérifiez l'état et renvoyez une réponse via App Groups ou une autre méthode.
+          return true
+      }
+      return false
+  }
+  ```
+
+---
+
+### 3. **Communication basée sur WebKit Messaging**
+
+Si la page web active dans Safari peut être utilisée comme intermédiaire, vous pouvez utiliser **WebKit Messaging** pour échanger des données entre l'extension et l'application mobile via des scripts injectés.
+
+- **Exemple d'injection de script dans la page active** :
+  ```javascript
+  browser.tabs.executeScript({
+    code: `
+      window.webkit.messageHandlers.app.postMessage({ action: "checkConnection" });
+    `
+  });
+  ```
+
+- **Dans l'application iOS** :  
+  Configurez un `WKScriptMessageHandler` pour répondre à ce message :
+  ```swift
+  class WebViewController: UIViewController, WKScriptMessageHandler {
+      func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+          if message.name == "app", let body = message.body as? [String: Any] {
+              if body["action"] as? String == "checkConnection" {
+                  // Répondre à l'extension via WebKit ou App Groups
+              }
+          }
+      }
+  }
+  ```
+
+---
+
+### Résumé des permissions et configurations
+
+1. **Dans l'extension Safari :**
+   - `activeTab`, `host_permissions`, et `webRequest` pour accéder à des API backend ou à l'onglet actif.
+   - Utilisation d'App Groups ou de WebKit pour interagir avec l'application mobile.
+
+2. **Dans l'application iOS :**
+   - App Groups pour partager des données localement.
+   - URL Schemes pour ouvrir l'application depuis l'extension.
+   - Optionnel : Backend API pour centraliser l'état de l'utilisateur.
+
+Chaque méthode dépend de votre architecture et des besoins de votre projet.
