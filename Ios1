@@ -1,0 +1,145 @@
+Pour une extension navigateur Safari sur iOS, qui doit interagir avec une application mobile iOS afin d'ouvrir une page de pédagogie, les permissions nécessaires et les mécanismes impliqués doivent respecter les limitations et spécificités de l'écosystème Apple. Voici les points essentiels :
+
+---
+
+### 1. **Permissions nécessaires dans l'extension Safari**
+
+Safari Extensions sur iOS sont basées sur **Safari Web Extensions** (comme celles sur macOS ou d'autres navigateurs basés sur WebExtensions). Voici les permissions clés nécessaires :
+
+#### a) **`tabs`**  
+Permet à l'extension d'ouvrir un nouvel onglet ou de rediriger un onglet existant vers une page spécifique :
+```json
+{
+  "permissions": ["tabs"]
+}
+```
+
+- **Exemple de script JavaScript** pour ouvrir la page de pédagogie :
+  ```javascript
+  browser.tabs.create({ url: "https://example.com/pedagogie" });
+  ```
+
+---
+
+#### b) **`activeTab`**  
+Si l'extension doit interagir avec l'onglet actif, cette permission est nécessaire. Elle est utile pour injecter des scripts ou interagir avec la page :
+```json
+{
+  "permissions": ["activeTab"]
+}
+```
+
+---
+
+#### c) **Host Permissions**  
+Si la page de pédagogie appartient à un domaine spécifique, il faut inclure ce domaine dans les permissions d'accès :
+```json
+{
+  "host_permissions": ["https://example.com/*"]
+}
+```
+
+- Cela garantit que l'extension peut interagir avec les pages de ce domaine.
+
+---
+
+### 2. **Interaction entre l'extension Safari et l'application mobile iOS**
+
+Pour Safari et iOS, il n'y a pas de communication directe entre une extension et une application mobile via un mécanisme standard comme Native Messaging. Voici les options :
+
+#### a) **App Groups (partage de données locales)**  
+L'extension et l'application mobile peuvent partager un conteneur commun via **App Groups**, permettant de vérifier si l'utilisateur est connecté ou de synchroniser des informations.
+
+- **Exemple de configuration dans l'extension :**
+  Configurez l'extension pour lire un état (par exemple, l'utilisateur connecté) via UserDefaults partagé :
+  ```swift
+  let sharedDefaults = UserDefaults(suiteName: "group.com.example.app")
+  if let isConnected = sharedDefaults?.bool(forKey: "isConnected") {
+      if isConnected {
+          // Ouvrir la page de pédagogie
+          browser.tabs.create({ url: "https://example.com/pedagogie" });
+      }
+  }
+  ```
+
+- **Dans l'application mobile iOS :**
+  Mettez à jour l'état de connexion :
+  ```swift
+  let sharedDefaults = UserDefaults(suiteName: "group.com.example.app")
+  sharedDefaults?.set(true, forKey: "isConnected")
+  ```
+
+---
+
+#### b) **URL Schemes**  
+L'application mobile peut enregistrer un URL Scheme pour recevoir des appels depuis l'extension. L'extension Safari peut invoquer ce Scheme pour déclencher des actions.
+
+- **Dans l'extension Safari (JavaScript)** :
+  ```javascript
+  window.location.href = "exampleapp://openPedagogiePage";
+  ```
+
+- **Dans l'application mobile (iOS)** :  
+  Configurez l'application pour répondre au Scheme :
+  ```swift
+  func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+      if url.scheme == "exampleapp" && url.host == "openPedagogiePage" {
+          // Ouvrir la page de pédagogie dans l'application mobile
+          return true
+      }
+      return false
+  }
+  ```
+
+---
+
+#### c) **Web-Based Communication (API Backend)**  
+Si l'état de l'utilisateur connecté est stocké dans une API backend commune, l'extension peut vérifier cet état via des requêtes réseau :
+
+- **Permissions nécessaires :**
+  ```json
+  {
+    "permissions": ["webRequest", "https://api.example.com/*"]
+  }
+  ```
+
+- **Dans l'extension Safari (JavaScript)** :
+  ```javascript
+  fetch("https://api.example.com/user/status")
+    .then(response => response.json())
+    .then(data => {
+      if (data.isConnected) {
+        browser.tabs.create({ url: "https://example.com/pedagogie" });
+      }
+    });
+  ```
+
+---
+
+### 3. **Manifest.json Exemple Complet**
+Voici un exemple de fichier `manifest.json` pour ce cas d'usage :
+```json
+{
+  "manifest_version": 3,
+  "name": "Ouvrir la page de pédagogie",
+  "version": "1.0",
+  "description": "Extension pour ouvrir une page pédagogique si l'utilisateur est connecté",
+  "permissions": ["tabs", "activeTab", "webRequest"],
+  "host_permissions": ["https://example.com/*", "https://api.example.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.png"
+  }
+}
+```
+
+---
+
+### Conclusion
+Pour ce cas spécifique :  
+1. **Permissions générales dans Safari :** `tabs`, `activeTab`, et `host_permissions` pour accéder à la page de pédagogie.  
+2. **Interaction avec l'application mobile :** utilisez **App Groups** pour partager l'état localement, ou **URL Schemes** pour déclencher des actions dans l'application.  
+3. **Option API backend :** vérifiez l'état utilisateur via un backend commun si applicable.
