@@ -1,0 +1,98 @@
+Pour une extension de navigateur fonctionnant avec **Safari** sur **iOS** (notamment via une application Swift), plusieurs permissions sont nécessaires pour garantir le bon fonctionnement de l'extension, en particulier si les scripts sont embarqués dans l'application iOS. Voici les principales permissions et configurations requises :
+
+---
+
+### 1. **Permissions générales dans le fichier `Info.plist`** :
+L'application iOS qui embarque l'extension Safari doit inclure certaines clés dans son fichier **`Info.plist`**, comme :
+
+- **`NSExtension`** : Déclare que l'extension Safari est incluse. Voici un exemple pour un fichier `Info.plist` :
+  ```xml
+  <key>NSExtension</key>
+  <dict>
+      <key>NSExtensionAttributes</key>
+      <dict>
+          <key>WKAppBoundDomains</key>
+          <array>
+              <string>example.com</string>
+          </array>
+      </dict>
+      <key>NSExtensionMainStoryboard</key>
+      <string>MainInterface</string>
+      <key>NSExtensionPointIdentifier</key>
+      <string>com.apple.Safari.web-extension</string>
+  </dict>
+  ```
+  - **`WKAppBoundDomains`** : Liste des domaines que l'application et l'extension peuvent intercepter (si vous limitez les actions à certains domaines spécifiques).
+
+---
+
+### 2. **Permissions spécifiques pour l'extension Safari Web** :
+Dans le fichier **`manifest.json`** de l'extension embarquée, vous devez définir des permissions pour les scripts et fonctionnalités nécessaires :
+
+- **`permissions`** : Autorise l'accès à des fonctionnalités spécifiques. Exemple :
+  ```json
+  "permissions": [
+    "activeTab",
+    "storage",
+    "webRequest",
+    "webRequestBlocking",
+    "tabs"
+  ]
+  ```
+
+  - **`activeTab`** : Accès temporaire à l'onglet actif pour exécuter un script ou interagir avec la page.
+  - **`storage`** : Permet de stocker des données dans le navigateur.
+  - **`webRequest` et `webRequestBlocking`** : Nécessaires si vous interceptez ou modifiez des requêtes réseau.
+  - **`tabs`** : Permet de gérer les onglets (utile pour extensions interagissant avec plusieurs onglets).
+
+- **`host_permissions`** : Déclare les domaines que l'extension peut manipuler. Exemple :
+  ```json
+  "host_permissions": [
+    "*://*.example.com/*",
+    "*://*/*"
+  ]
+  ```
+
+- **`content_scripts`** : Si vous embarquez des scripts dans l'application iOS, vous devez déclarer les pages où ces scripts s’exécutent. Exemple :
+  ```json
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"]
+    }
+  ]
+  ```
+
+---
+
+### 3. **Configuration dans Xcode pour l’extension Safari** :
+- Créez une **Target d’extension Safari** dans votre projet Xcode.
+- Dans la **capabilities de l’application** :
+  - Activez **App Sandbox**.
+  - Autorisez les **Outgoing Network Connections** pour permettre à l'extension d'accéder aux ressources en ligne.
+
+---
+
+### 4. **Gestion des autorisations utilisateur sur iOS** :
+Les extensions Safari sur iOS demandent à l'utilisateur des autorisations spécifiques après leur installation depuis l'application. Vous devez inclure dans votre application des instructions claires pour que l'utilisateur active l'extension via **Paramètres > Safari > Extensions**.
+
+---
+
+### 5. **Autres considérations importantes** :
+- **Protection des données utilisateur** : Si l'extension intercepte ou modifie des requêtes réseau, vous devez suivre les règles strictes d'Apple pour protéger la confidentialité des utilisateurs.
+- **Transparence** : Si votre extension accède aux données des utilisateurs ou intercepte du contenu, vous devez déclarer ces comportements dans votre fiche App Store.
+
+---
+
+### Résumé des permissions nécessaires :
+1. **Manifest.json** :
+   - `activeTab`, `webRequest`, `webRequestBlocking`, `tabs`, `storage`, et éventuellement des `host_permissions`.
+2. **Content scripts** :
+   - Liste des pages (via `matches`) et scripts utilisés.
+3. **Info.plist** :
+   - Déclarez l'extension dans l'application iOS.
+4. **Xcode** :
+   - Activez les capacités requises pour Safari Extensions.
+
+Si vous précisez davantage les fonctionnalités de votre extension, je peux affiner cette liste !
