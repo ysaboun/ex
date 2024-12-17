@@ -1,0 +1,85 @@
+Pour une extension navigateur qui récupère un montant de **cashback** dans le cadre d'une application **Swift iOS** intégrée avec **Safari**, il est crucial de définir des permissions adaptées dans le fichier **`manifest.json`** de l'extension web. Ces permissions sont nécessaires pour interagir avec les pages web, intercepter les requêtes et accéder à des données comme le cashback.
+
+Voici un exemple de configuration des permissions spécifiques dans le **`manifest.json`** pour ce cas d'utilisation :
+
+---
+
+### 1. **Permissions générales nécessaires** :
+- **`activeTab`** : Permet à l'extension d'interagir avec l'onglet actuellement actif pour récupérer des informations spécifiques comme un montant de cashback.
+- **`storage`** : Pour stocker des données locales, par exemple, le montant de cashback récupéré ou les informations de session.
+- **`webRequest` et `webRequestBlocking`** : Permet de surveiller, d'intercepter et de modifier les requêtes HTTP/HTTPS afin de suivre les transactions ou récupérer des données comme un cashback depuis un site partenaire.
+- **`tabs`** : Si vous devez interagir avec plusieurs onglets ou obtenir des informations sur la page actuelle, par exemple, récupérer un montant de cashback affiché.
+- **`host_permissions`** : Permet d'autoriser l'accès à certains domaines où vous souhaitez récupérer des informations liées au cashback.
+
+---
+
+### 2. **Exemple de fichier `manifest.json`** :
+
+Voici un exemple de configuration pour l'extension de navigateur dans le fichier **`manifest.json`** :
+
+```json
+{
+  "manifest_version": 3,
+  "name": "Cashback Extension",
+  "version": "1.0",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "webRequest",
+    "webRequestBlocking",
+    "tabs"
+  ],
+  "host_permissions": [
+    "*://*.cashback-site.com/*",  // Remplacez par les sites spécifiques que vous surveillez
+    "*://*/*"  // Utilisé si vous devez interagir avec plusieurs sites
+  ],
+  "content_scripts": [
+    {
+      "matches": ["*://*.cashback-site.com/*", "*://*/*"],  // Déclare les pages où les scripts seront exécutés
+      "js": ["content.js"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
+```
+
+### 3. **Détails des permissions** :
+- **`activeTab`** : Cette permission vous permet de récupérer des informations sur la page active, comme un montant de cashback affiché après une transaction.
+- **`storage`** : Pour stocker temporairement des données (par exemple, le montant du cashback ou l'état de la session).
+- **`webRequest` et `webRequestBlocking`** : Ces permissions sont utiles si vous devez surveiller ou intercepter les requêtes vers des sites partenaires ou récupérer des informations du cashback directement via des API ou des requêtes réseau.
+- **`tabs`** : Vous permet de manipuler les onglets ou de récupérer des informations de page si nécessaire.
+
+---
+
+### 4. **Fonctionnalités supplémentaires selon l'implémentation** :
+Si l'extension doit **interagir avec des modales** pour afficher des montants de cashback, vous pourriez aussi avoir besoin de **content scripts** qui manipulent l'interface utilisateur de la page en ajoutant des éléments comme des boîtes modales, ou d'exécuter des actions comme :
+
+- **Extraction du montant de cashback** : Par exemple, en extrayant une valeur affichée sur la page ou dans une réponse JSON d'une API.
+- **Gestion de la modale** : Afficher la modale via un script de contenu si un cashback est trouvé.
+
+### Exemple de `content.js` pour extraire un montant de cashback :
+
+```javascript
+// Exemple de script pour récupérer un montant de cashback depuis la page
+let cashbackAmount = document.querySelector('.cashback-amount').innerText;
+chrome.storage.local.set({ cashbackAmount: cashbackAmount }, function() {
+    console.log("Cashback amount stored:", cashbackAmount);
+});
+```
+
+### 5. **Autorisation d'accès aux domaines spécifiques** :
+- Si votre extension doit récupérer des informations de cashback depuis un site partenaire spécifique, vous devez définir ces **hôtes** dans `host_permissions` pour permettre à l'extension d'accéder aux pages pertinentes.
+
+### 6. **Contexte dans l'application iOS** :
+L'extension doit être correctement intégrée à votre application **Swift iOS** avec un **point d'extension Safari** (via `NSExtension`). Elle interagira avec l'extension web en utilisant des APIs JavaScript et en récupérant ou stockant des informations comme le cashback via **local storage** ou **messagerie entre l'application iOS et l'extension**.
+
+---
+
+### Résumé des permissions dans le `manifest.json` :
+- **`activeTab`**, **`storage`**, **`webRequest`**, **`webRequestBlocking`**, **`tabs`** : pour interagir avec la page, intercepter les requêtes et stocker les données.
+- **`host_permissions`** : pour autoriser l'accès aux sites partenaires ou spécifiques.
+- **Content Scripts** : pour manipuler l'interface de la page et récupérer les données (comme le montant de cashback).
+
+Cela devrait couvrir les bases pour votre extension. Si des fonctionnalités spécifiques doivent être ajoutées, comme la gestion de la communication entre l'app iOS et l'extension, je peux approfondir selon vos besoins.
