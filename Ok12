@@ -1,0 +1,131 @@
+Pour une extension de navigateur installée sur un appareil mobile, dans le cas d'une **application Swift iOS** et **Safari**, et dont le but est de remplir un formulaire de paiement en ligne en se basant sur les champs `input` avec `autocomplete="cc-XX"`, voici les permissions nécessaires à déclarer dans le **manifest.json** de l'extension.
+
+### 1. **Permissions pour interagir avec les pages web et les formulaires** :
+
+#### **a. `activeTab`** :
+Cette permission permet à l'extension d’interagir avec l'onglet actif, y compris pour remplir des champs de formulaire.
+
+```json
+"permissions": [
+  "activeTab"
+]
+```
+
+- Cette permission est cruciale pour interagir avec la page web sur laquelle l'utilisateur se trouve.
+
+#### **b. `storage`** (facultatif) :
+Si vous devez stocker des informations telles que les détails de paiement ou des préférences de l'utilisateur pour les remplir dans le formulaire de manière sécurisée, vous devez activer cette permission.
+
+```json
+"permissions": [
+  "storage"
+]
+```
+
+- Vous pouvez stocker de manière sécurisée les informations de paiement de l'utilisateur, à condition de respecter les réglementations sur la confidentialité.
+
+#### **c. `webNavigation`** (facultatif) :
+Cette permission permet à l'extension de suivre les actions de navigation de l'utilisateur, utile si vous souhaitez remplir automatiquement le formulaire dès que la page est complètement chargée.
+
+```json
+"permissions": [
+  "webNavigation"
+]
+```
+
+- Utile pour détecter la transition entre les pages de paiement et s'assurer que l'extension s'exécute dans le bon contexte.
+
+---
+
+### 2. **Permissions pour interagir avec les formulaires** :
+
+#### **a. `content_scripts`** :
+Les scripts de contenu permettent à l'extension de remplir les champs de formulaire sur une page web. Pour cela, vous devez spécifier les pages sur lesquelles l'extension peut interagir et injecter un script JavaScript qui va identifier les champs de formulaire avec `autocomplete="cc-XX"` et les remplir.
+
+```json
+"content_scripts": [
+  {
+    "matches": ["https://*.example.com/*"],  // Remplacez par l'URL des pages pertinentes
+    "js": ["content.js"],
+    "run_at": "document_end"
+  }
+]
+```
+
+- Cette configuration permet à l'extension de remplir les formulaires après le chargement de la page. Vous allez injecter un script (ici `content.js`) qui va rechercher les champs de formulaire avec `autocomplete="cc-XX"` et les remplir avec les informations nécessaires.
+
+#### Exemple de code `content.js` :
+
+```javascript
+document.querySelectorAll('input[autocomplete^="cc-"]').forEach(inputField => {
+    if (inputField) {
+        if (inputField.getAttribute('autocomplete') === 'cc-name') {
+            inputField.value = 'John Doe'; // Remplacez par les informations du titulaire de la carte
+        } else if (inputField.getAttribute('autocomplete') === 'cc-number') {
+            inputField.value = '1234 5678 9876 5432'; // Remplacez par le numéro de carte
+        } else if (inputField.getAttribute('autocomplete') === 'cc-exp') {
+            inputField.value = '12/25'; // Remplacez par la date d'expiration
+        } else if (inputField.getAttribute('autocomplete') === 'cc-csc') {
+            inputField.value = '123'; // Remplacez par le code de sécurité de la carte
+        }
+    }
+});
+```
+
+---
+
+### 3. **Permissions supplémentaires** (si nécessaire) :
+
+#### **a. `webRequest` et `webRequestBlocking`** :
+Si votre extension doit intercepter les requêtes réseau liées au formulaire de paiement (par exemple, pour vérifier ou valider les informations avant de soumettre), vous pouvez utiliser ces permissions.
+
+```json
+"permissions": [
+  "webRequest",
+  "webRequestBlocking"
+]
+```
+
+- Ces permissions vous permettent d’intercepter les requêtes, de modifier ou bloquer certaines actions avant l’envoi.
+
+---
+
+### 4. **Autres considérations** :
+
+- **Sécurité** : Lors de l'interaction avec des informations sensibles (comme les numéros de carte de crédit), vous devez vous assurer que l'extension respecte les normes de sécurité telles que **PCI-DSS** et les pratiques de confidentialité.
+  
+- **Confidentialité des données** : Veillez à ce que les informations de paiement ne soient pas stockées de manière non sécurisée ou envoyées à des serveurs externes, sauf si c'est absolument nécessaire et conforme aux lois sur la protection des données (par exemple, **GDPR** ou **CCPA**).
+
+- **Test sur iOS Safari** : Assurez-vous que votre extension fonctionne correctement sur Safari mobile, car certaines API peuvent se comporter différemment dans un environnement mobile comparé à un navigateur de bureau.
+
+---
+
+### Exemple complet de **manifest.json** pour l'extension :
+
+```json
+{
+  "manifest_version": 2,
+  "name": "Payment Form Filler",
+  "version": "1.0",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "webNavigation"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://*.example.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "browser_action": {
+    "default_popup": "popup.html"
+  }
+}
+```
+
+En résumé, pour permettre à une extension de navigateur de remplir un formulaire de paiement en ligne sur un appareil mobile avec **Safari**, vous devez principalement utiliser les permissions suivantes dans votre **manifest.json** : `activeTab`, `storage`, et éventuellement `webNavigation`, en plus de configurer correctement les **content scripts** pour interagir avec les champs de formulaire.
