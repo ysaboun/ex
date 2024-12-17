@@ -1,0 +1,179 @@
+Pour vérifier si l'utilisateur a donné toutes les permissions nécessaires à une **extension Safari Web** embarquée dans une application Swift sur iOS, vous devez définir précisément dans le fichier `manifest.json` les permissions requises pour le bon fonctionnement de votre extension. Voici une explication des permissions nécessaires et comment les configurer :
+
+---
+
+### 1. **Structure générale du `manifest.json`** :
+Le fichier `manifest.json` est essentiel pour déclarer les permissions et comportements de l'extension. Exemple de base :
+
+```json
+{
+  "manifest_version": 2,
+  "name": "Nom de l'extension",
+  "version": "1.0",
+  "description": "Description de l'extension",
+  "permissions": [],
+  "host_permissions": [],
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  },
+  "content_scripts": [],
+  "web_accessible_resources": [],
+  "browser_action": {
+    "default_title": "Extension",
+    "default_icon": "icon.png"
+  }
+}
+```
+
+---
+
+### 2. **Permissions nécessaires pour les extensions Web dans `manifest.json`** :
+Les permissions nécessaires dépendent des fonctionnalités que votre extension fournit. Voici une liste typique :
+
+#### a) **Permissions globales** :
+- **`activeTab`** : Nécessaire si l'extension interagit avec l'onglet actif (par exemple, pour injecter un script).
+  ```json
+  "permissions": ["activeTab"]
+  ```
+
+- **`storage`** : Permet de stocker et de récupérer des données utilisateur (comme des paramètres ou un état local).
+  ```json
+  "permissions": ["storage"]
+  ```
+
+- **`webRequest` et `webRequestBlocking`** : Indispensables pour intercepter ou modifier les requêtes réseau (par exemple, pour bloquer ou modifier des contenus).
+  ```json
+  "permissions": ["webRequest", "webRequestBlocking"]
+  ```
+
+- **`tabs`** : Si l'extension doit gérer plusieurs onglets ou accéder aux informations des onglets.
+  ```json
+  "permissions": ["tabs"]
+  ```
+
+- **`notifications`** : Si l'extension doit afficher des notifications.
+  ```json
+  "permissions": ["notifications"]
+  ```
+
+#### b) **Permissions pour les scripts injectés** :
+- **`host_permissions`** : Spécifie les domaines ou URL où les scripts peuvent être exécutés. Par exemple :
+  ```json
+  "host_permissions": ["*://*.example.com/*", "*://*/*"]
+  ```
+  Si votre extension est conçue pour fonctionner sur tous les sites Web :
+  ```json
+  "host_permissions": ["<all_urls>"]
+  ```
+
+- **`content_scripts`** : Si vous injectez des scripts dans des pages Web, vous devez les déclarer. Exemple :
+  ```json
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"]
+    }
+  ]
+  ```
+
+#### c) **Web-accessible resources** :
+Si votre extension doit fournir des fichiers (comme des images ou des scripts) accessibles par les pages Web :
+```json
+"web_accessible_resources": [
+  "scripts/injected.js",
+  "styles/injected.css"
+]
+```
+
+---
+
+### 3. **Vérification des permissions accordées par l'utilisateur** :
+Pour savoir si l'utilisateur a accordé les permissions nécessaires, utilisez l'API **`permissions`** dans votre `background.js` ou un autre script.
+
+Exemple pour vérifier si toutes les permissions sont accordées :
+```javascript
+chrome.permissions.contains(
+  {
+    permissions: ["activeTab", "storage", "webRequest"],
+    origins: ["<all_urls>"]
+  },
+  function (granted) {
+    if (granted) {
+      console.log("Toutes les permissions sont accordées.");
+    } else {
+      console.log("Permissions manquantes !");
+    }
+  }
+);
+```
+
+Vous pouvez également demander dynamiquement des permissions si elles ne sont pas encore accordées :
+```javascript
+chrome.permissions.request(
+  {
+    permissions: ["webRequest", "tabs"],
+    origins: ["*://*.example.com/*"]
+  },
+  function (granted) {
+    if (granted) {
+      console.log("Permissions accordées !");
+    } else {
+      console.log("L'utilisateur a refusé les permissions.");
+    }
+  }
+);
+```
+
+---
+
+### 4. **Considérations pour Safari sur iOS** :
+Safari gère certaines permissions différemment des autres navigateurs (comme Chrome). Voici quelques points à noter :
+- Safari ne prend pas en charge les permissions dynamiques (`chrome.permissions.request` n’est pas pris en charge dans Safari Web Extensions).
+- Toutes les permissions nécessaires doivent être déclarées dans le `manifest.json`.
+- L'utilisateur doit activer explicitement l'extension et lui accorder les autorisations via **Réglages > Safari > Extensions**.
+
+---
+
+### 5. **Exemple complet de manifest.json** :
+Voici un exemple adapté aux besoins courants :
+
+```json
+{
+  "manifest_version": 2,
+  "name": "Mon Extension Safari",
+  "version": "1.0",
+  "description": "Extension pour Safari sur iOS",
+  "permissions": ["activeTab", "storage", "webRequest", "webRequestBlocking", "tabs"],
+  "host_permissions": ["*://*/*"],
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"]
+    }
+  ],
+  "web_accessible_resources": [
+    "resources/injected.js",
+    "resources/injected.css"
+  ],
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  },
+  "browser_action": {
+    "default_title": "Mon Extension",
+    "default_icon": "icon.png"
+  }
+}
+```
+
+---
+
+### Résumé :
+1. **Permissions requises** :
+   - `activeTab`, `storage`, `webRequest`, `webRequestBlocking`, `tabs`.
+   - `host_permissions` pour définir les domaines autorisés.
+2. **Vérification dynamique** : Possible avec l'API `permissions` (non supporté sur Safari iOS).
+3. **Préparation pour Safari** : Toutes les permissions doivent être déclarées à l'avance. Les utilisateurs doivent activer explicitement l'extension dans les réglages de Safari.
