@@ -1,0 +1,65 @@
+Pour une **extension navigateur Safari sur iOS** qui interagit avec une **application mobile Swift iOS** et récupère des informations sensibles comme le **PAN (Primary Account Number)** ou d'autres données de carte bancaire, il y a des considérations légales, sécuritaires et techniques importantes à prendre en compte.
+
+### **Sécurité et confidentialité des données sensibles**
+Avant d'explorer les permissions techniques, il est essentiel de souligner que l'accès aux informations sensibles telles que les données de carte bancaire (comme le PAN) est **strictement réglementé** par des normes de sécurité comme la **PCI-DSS (Payment Card Industry Data Security Standard)**. Les applications ou extensions ne peuvent pas simplement accéder à ces informations sans un contrôle strict et des mesures de sécurité appropriées, et dans la plupart des cas, cela est **interdit** par les politiques de la plateforme (Apple en particulier) et les lois de protection de la vie privée.
+
+**Apple** impose des restrictions rigoureuses sur l'accès aux informations sensibles des utilisateurs, et il est **hautement improbable** qu'une extension puisse récupérer directement des informations de carte bancaire via **Safari** ou d'autres méthodes sans que l'application mobile ne passe par un **système de paiement sécurisé**.
+
+### **Permissions pour une extension de navigateur Safari**
+Si l'extension a pour but d'interagir avec des données non sensibles (comme des informations de session ou des paramètres de l'application) ou si elle est destinée à des opérations sur des sites de paiement légaux, voici les permissions qui peuvent être pertinentes dans **manifest.json**. Cependant, ces permissions ne permettent pas un accès direct aux informations sensibles de carte bancaire.
+
+### 1. **Permissions de base dans `manifest.json` :**
+Voici quelques permissions de base que vous pourriez inclure dans le fichier `manifest.json` de l'extension, en fonction de ce que vous souhaitez faire avec l'extension (mais cela **ne permet pas d'accéder au PAN ou aux informations bancaires directement**).
+
+```json
+{
+  "name": "Votre Extension",
+  "version": "1.0",
+  "description": "Extension pour interagir avec des informations de paiement",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "tabs",
+    "identity",
+    "webRequest",
+    "webRequestBlocking"
+  ],
+  "host_permissions": [
+    "*://*.example.com/*",
+    "*://*/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["*://*.example.com/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"]
+    }
+  ]
+}
+```
+
+#### Explication des permissions :
+- **`activeTab`** : Permet d'interagir avec l'onglet actif, utile si vous souhaitez extraire ou modifier des données sur la page active.
+- **`storage`** : Accès aux API de stockage local de l'extension, ce qui permet de sauvegarder des informations comme des tokens ou des configurations utilisateur.
+- **`tabs`** : Permet d'interagir avec les onglets ouverts, ce qui est utile pour obtenir des informations sur l'onglet actif.
+- **`identity`** : Si l'extension nécessite une forme d'authentification ou de gestion des utilisateurs, cette permission peut être nécessaire.
+- **`webRequest`** et **`webRequestBlocking`** : Permet d'intercepter les requêtes réseau (utile si vous devez interagir avec des API de paiement ou suivre les requêtes envoyées lors d'une transaction).
+
+### 2. **Sécurité renforcée sur iOS (via App Sandbox)**
+Dans une application iOS Swift qui embarque cette extension Safari, vous devez également configurer des **capabilités d'App Sandbox** via Xcode, en particulier les **outils de réseau** et le **stockage sécurisé** pour interagir avec les données sensibles de manière conforme aux normes de sécurité.
+
+### 3. **Accès aux informations sensibles (PAN et autres)**
+Sur iOS, les extensions Safari ne peuvent **pas accéder directement aux informations sensibles de la carte bancaire** comme le PAN, en raison des politiques de sécurité d'Apple. De plus :
+- **Apple Pay** et les paiements dans les apps iOS sont gérés via des APIs spécifiques à Apple, telles que **Apple Pay**, et **ne permettent pas à une extension de navigateur ou à une application tierce d’accéder directement aux informations de la carte**.
+- **Interagir avec une app mobile iOS** : Si l'extension doit interagir avec une application mobile pour récupérer des informations sensibles, il faut que cette interaction soit réalisée via des mécanismes sécurisés comme des **API de paiement sécurisées**, et non directement via le navigateur ou l'extension.
+
+### 4. **Conformité avec les normes légales** :
+Si votre extension ou application est destinée à manipuler des informations de carte bancaire, il est impératif de se conformer aux normes **PCI-DSS** et de passer par des processus sécurisés (comme des API de paiement tokenisées). L'extension ne peut pas récupérer directement des informations telles que le PAN sans utiliser un mécanisme de sécurité reconnu.
+
+---
+
+### **Résumé :**
+Les **permissions nécessaires** dans le fichier `manifest.json` pour interagir avec des données de paiement, tout en respectant les règles de sécurité d'Apple et les normes PCI-DSS, incluraient des permissions de base comme `activeTab`, `webRequest`, `webRequestBlocking`, mais **l'extension ne pourra pas accéder directement au PAN ou à d'autres informations sensibles de carte bancaire**. Pour récupérer ces informations, vous devez utiliser une API de paiement sécurisée via l'application iOS ou un mécanisme conforme à la législation applicable.
+
+### **Conseil :**
+Si votre objectif est de traiter des paiements ou des informations de carte bancaire, vous devrez probablement intégrer des **solutions de paiement sécurisées** comme **Apple Pay** ou d'autres plateformes de paiement qui respectent les normes de sécurité.
