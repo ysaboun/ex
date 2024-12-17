@@ -1,0 +1,116 @@
+Pour ce cas d'utilisation spécifique où vous affichez un bouton **`mon-ext`** en **sticky** sur une page **e-commerce** whitelistée, vous devrez définir certaines permissions et configurations dans le fichier `manifest.json` de votre extension Safari, en tenant compte des fonctionnalités suivantes :
+
+1. **Accéder à des pages spécifiques de l'e-commerce**.
+2. **Injecter du code JavaScript et du CSS** pour afficher le bouton de manière sticky.
+3. **Assurer l'interaction avec le bouton**, comme la collecte de données ou la navigation.
+
+Voici les **permissions nécessaires** dans le fichier **`manifest.json`** pour faire fonctionner cette extension :
+
+---
+
+### 1. **Permissions nécessaires** :
+
+#### a. **`host_permissions`** :
+Vous devez spécifier les pages d'e-commerce où votre extension doit interagir. Cela permet à l'extension de charger du contenu sur ces pages spécifiques (par exemple, les pages produit, panier, etc.).
+
+```json
+"host_permissions": [
+  "https://www.exemple-ecommerce.com/*"
+]
+```
+Cela permet à l'extension d'accéder à **toutes les pages** du domaine e-commerce spécifié.
+
+#### b. **`content_scripts`** :
+Vous devez définir les pages sur lesquelles injecter le code JavaScript et le CSS pour afficher le bouton **`mon-ext`**. Utilisez la clé `matches` pour indiquer l'URL des pages où le script doit être injecté. Ensuite, vous pouvez déclarer les fichiers JS et CSS à injecter dans ces pages.
+
+```json
+"content_scripts": [
+  {
+    "matches": ["https://www.exemple-ecommerce.com/*"],  // correspond aux pages d'e-commerce
+    "js": ["content.js"],  // script pour afficher le bouton sticky
+    "css": ["styles.css"]  // style CSS pour le bouton sticky
+  }
+]
+```
+
+- **`content.js`** : Le fichier JavaScript qui sera injecté pour ajouter le bouton sticky.
+- **`styles.css`** : Le fichier CSS pour appliquer le style sticky au bouton.
+
+#### c. **`permissions`** :
+Cela inclut des permissions supplémentaires, mais pour l'affichage du bouton sticky, vous n'avez pas nécessairement besoin de permissions spécifiques à part celles mentionnées ci-dessus, sauf si vous souhaitez interagir avec l'onglet ou les cookies.
+
+```json
+"permissions": [
+  "activeTab",  // Accès à l'onglet actif si vous devez interagir avec lui
+  "storage"  // Si vous avez besoin de stocker des informations pour l'extension (par exemple, préférences utilisateur)
+]
+```
+
+---
+
+### 2. **Exemple complet de `manifest.json`** :
+
+```json
+{
+  "manifest_version": 3,
+  "name": "Mon Extension E-Commerce",
+  "version": "1.0",
+  "description": "Affiche un bouton sticky sur une page e-commerce.",
+  "host_permissions": [
+    "https://www.exemple-ecommerce.com/*"
+  ],
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.exemple-ecommerce.com/*"],  // Correspond à l'URL de la page e-commerce
+      "js": ["content.js"],  // Script pour afficher et gérer le bouton sticky
+      "css": ["styles.css"]  // Style CSS du bouton sticky
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
+```
+
+---
+
+### 3. **Autres considérations** :
+
+- **CSS pour le bouton sticky** : Votre fichier **`styles.css`** pourrait ressembler à ceci pour rendre le bouton sticky :
+  ```css
+  #mon-ext {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  ```
+  Vous pouvez personnaliser l'apparence et l'interaction du bouton selon vos besoins.
+
+- **JavaScript (content.js)** : Le fichier JavaScript pourrait contenir du code pour insérer dynamiquement le bouton sur la page e-commerce et gérer ses événements (par exemple, un clic sur le bouton).
+  ```javascript
+  const button = document.createElement('button');
+  button.id = 'mon-ext';
+  button.textContent = 'Mon Bouton';
+  document.body.appendChild(button);
+  ```
+
+- **Interaction avec le bouton** : Si vous devez faire en sorte que le bouton effectue une action, comme collecter des informations de panier ou interagir avec l'API de l'e-commerce, vous devrez ajouter du code supplémentaire dans **`content.js`** pour gérer les interactions.
+
+---
+
+En résumé, les permissions essentielles pour ce cas sont :
+- **`host_permissions`** pour spécifier les pages e-commerce.
+- **`content_scripts`** pour injecter le JavaScript et le CSS nécessaires.
+- **`permissions`** comme **`activeTab`** si vous devez interagir avec l'onglet actif ou manipuler des éléments dynamiques.
