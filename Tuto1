@@ -1,0 +1,153 @@
+Pour une **extension Safari sur iOS** interagissant avec une application native iOS via **App Groups** ou **Keychain**, vous devez configurer correctement les autorisations dans votre projet **Xcode** et non dans un fichier `manifest.json` comme pour Chrome. Voici les étapes pour configurer une extension Safari sur iOS dans ce cas :
+
+---
+
+### 1. **Configurer le projet dans Xcode**
+
+#### a) **Créer une extension Safari**
+1. Ajoutez une nouvelle cible d’extension Safari à votre projet iOS.
+   - Dans Xcode : **File > New > Target > Safari Web Extension**.
+2. Assurez-vous que l’extension Safari et l’application iOS partagent le même **App Group**.
+
+#### b) **Activer App Groups et Keychain Sharing**
+1. **App Groups** :
+   - Allez dans les **Capabilities** de votre application principale et de l’extension Safari.
+   - Activez **App Groups** et ajoutez un identifiant de groupe commun (par exemple : `group.com.mycompany.myapp`).
+
+2. **Keychain Sharing** :
+   - Activez également **Keychain Sharing** dans les **Capabilities**, si nécessaire pour le partage sécurisé des données.
+
+#### c) **Configurer les permissions dans le fichier `Info.plist`**
+Ajoutez les clés suivantes à l'extension Safari pour gérer les permissions spécifiques :
+- **NSExtension** :
+  Configurez l’extension comme une extension Safari.
+
+  ```xml
+  <key>NSExtension</key>
+  <dict>
+      <key>NSExtensionAttributes</key>
+      <dict>
+          <key>WKAppBoundDomains</key>
+          <array>
+              <string>https://www.example.com</string> <!-- Domaine de l'application -->
+          </array>
+      </dict>
+      <key>NSExtensionPointIdentifier</key>
+      <string>com.apple.Safari.web-extension</string>
+  </dict>
+  ```
+
+---
+
+### 2. **Partager des données entre l’extension et l’application**
+
+#### a) **Via App Groups (NSUserDefaults partagé)**
+L’application principale et l’extension peuvent utiliser les **NSUserDefaults** via un App Group pour partager des données.
+
+##### Dans l'application principale :
+```swift
+let sharedDefaults = UserDefaults(suiteName: "group.com.mycompany.myapp")
+sharedDefaults?.set("value_to_share", forKey: "key")
+```
+
+##### Dans l'extension Safari :
+```swift
+let sharedDefaults = UserDefaults(suiteName: "group.com.mycompany.myapp")
+if let value = sharedDefaults?.string(forKey: "key") {
+    print("Shared value: \(value)")
+}
+```
+
+#### b) **Via Keychain**
+Si les données doivent être sécurisées (comme des tokens), utilisez le **Keychain** pour les partager.
+
+##### Stocker dans Keychain (Application principale) :
+```swift
+import Security
+
+func saveToKeychain(value: String, for key: String) {
+    let query: [String: Any] = [
+        kSecClass as String: kSecClassGenericPassword,
+        kSecAttrAccount as String: key,
+        kSecValueData as String: value.data(using: .utf8)!
+    ]
+    SecItemAdd(query as CFDictionary, nil)
+}
+```
+
+##### Lire depuis Keychain (Extension Safari) :
+```swift
+func readFromKeychain(for key: String) -> String? {
+    let query: [String: Any] = [
+        kSecClass as String: kSecClassGenericPassword,
+        kSecAttrAccount as String: key,
+        kSecReturnData as String: true,
+        kSecMatchLimit as String: kSecMatchLimitOne
+    ]
+
+    var dataTypeRef: AnyObject?
+    let status = SecItemCopyMatching(query as CFDictionary, &dataTypeRef)
+
+    if status == errSecSuccess, let data = dataTypeRef as? Data {
+        return String(data: data, encoding: .utf8)
+    }
+    return nil
+}
+```
+
+---
+
+### 3. **Chargement et exécution de l’extension Safari**
+
+#### a) **Autorisations d’accès aux pages Web**
+Pour que l’extension Safari puisse s’exécuter sur des pages Web spécifiques :
+1. Ajoutez une configuration dans `manifest.json` (généré automatiquement pour Safari) :
+   ```json
+   {
+     "manifest_version": 2,
+     "name": "My Safari Extension",
+     "version": "1.0",
+     "permissions": [
+       "activeTab",
+       "storage"
+     ],
+     "content_scripts": [
+       {
+         "matches": ["https://www.example.com/*"],
+         "js": ["content.js"]
+       }
+     ]
+   }
+   ```
+
+2. Modifiez le fichier `content.js` pour envoyer ou récupérer des données via votre application native si nécessaire.
+
+---
+
+### 4. **Communication entre l'extension Safari et l'application native**
+
+Pour communiquer directement entre l’extension Safari et l’application native, utilisez **WebKit Messages** ou un serveur local.
+
+#### Exemple avec WebKit Messages :
+- Dans l’application iOS :
+  Configurez une **WebView** pour recevoir et envoyer des messages.
+
+```swift
+webView.configuration.userContentController.add(self, name: "appListener")
+```
+
+- Dans l’extension Safari :
+  Envoyez un message à l’application depuis le `content.js` :
+  ```javascript
+  safari.extension.dispatchMessage("key", "value_to_send");
+  ```
+
+---
+
+### Conclusion
+
+- Activez **App Groups** et/ou **Keychain Sharing** dans les capacités de l’application et de l’extension.
+- Utilisez `NSUserDefaults` ou Keychain pour partager des données.
+- Configurez les permissions via le `Info.plist` et le `manifest.json` généré automatiquement.
+
+Si vous avez besoin de précisions supplémentaires ou d’exemples détaillés, je peux les fournir !
