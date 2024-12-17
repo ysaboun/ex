@@ -1,0 +1,110 @@
+Pour l'extension Safari sur iOS dans le cadre d'un projet Swift, où vous souhaitez afficher un logo de votre extension sur les liens vers les sites de e-commerce sur la page de recherche Google, vous devez vous assurer que l'extension a les bonnes permissions et les bonnes configurations pour interagir avec le contenu de la page (les liens) et l'afficher correctement.
+
+Voici les permissions nécessaires dans le fichier `manifest.json` pour réaliser ce cas d'utilisation :
+
+---
+
+### 1. **Permissions nécessaires dans `manifest.json`** :
+
+#### a. **`permissions`** :
+Pour interagir avec les liens des pages web (comme ceux vers les sites de e-commerce sur Google), vous aurez besoin des permissions suivantes :
+- **`activeTab`** : Cette permission permet à l'extension d'accéder au contenu de l'onglet actuellement actif (sur lequel l'utilisateur se trouve).
+- **`storage`** : Si vous avez besoin de stocker des informations localement (par exemple, pour garder une trace des sites de e-commerce).
+- **`tabs`** : Cette permission est utilisée pour accéder aux informations sur les onglets ouverts dans le navigateur.
+- **`webRequest` et `webRequestBlocking`** (facultatif) : Ces permissions permettent de surveiller et bloquer les requêtes web. Ce sont des options avancées si vous devez intercepter les requêtes réseau, mais elles ne sont pas strictement nécessaires si vous ne modifiez que l'affichage des éléments de la page.
+
+Exemple de section `permissions` dans le `manifest.json` :
+```json
+"permissions": [
+    "activeTab",
+    "storage",
+    "tabs"
+]
+```
+
+#### b. **`host_permissions`** :
+Pour restreindre l'extension à interagir uniquement avec certaines pages, vous pouvez spécifier les domaines auxquels vous souhaitez appliquer l'extension. Par exemple, si vous souhaitez afficher le logo sur les liens des sites de e-commerce, vous pouvez utiliser une expression de domaine comme :
+```json
+"host_permissions": [
+    "https://www.google.com/*",
+    "https://*.amazon.com/*",
+    "https://*.ebay.com/*"
+]
+```
+Cela permet de cibler spécifiquement les pages de résultats Google et les sites e-commerce comme Amazon ou eBay.
+
+#### c. **`content_scripts`** :
+Cette partie de votre manifeste permet de spécifier le script et le style qui sera injecté dans la page web pour afficher le logo sur les liens.
+
+Exemple de configuration `content_scripts` :
+```json
+"content_scripts": [
+    {
+      "matches": ["https://www.google.com/search*"],
+      "js": ["content.js"],
+      "css": ["styles.css"]
+    }
+]
+```
+- **`matches`** : Déclare les pages où votre script doit s'exécuter (dans ce cas, les pages de recherche Google).
+- **`js`** : Le fichier JavaScript (par exemple, `content.js`) qui sera injecté pour interagir avec le DOM de la page et afficher le logo sur les liens vers les sites de e-commerce.
+- **`css`** : Le fichier CSS (par exemple, `styles.css`) qui contient les styles pour le logo (taille, positionnement, etc.).
+
+---
+
+### 2. **Code JavaScript (`content.js`)** :
+Dans votre fichier JavaScript, vous allez écrire un script qui parcourt les liens de la page de résultats Google et détecte ceux qui mènent à des sites de e-commerce. Ensuite, vous pourrez y insérer un logo à l'aide d'un élément HTML (par exemple, une image `<img>`).
+
+Exemple de code dans `content.js` :
+```javascript
+// Liste des domaines e-commerce
+const ecommerceDomains = ["amazon.com", "ebay.com", "etsy.com"];
+
+// Parcourt tous les liens sur la page
+document.querySelectorAll("a").forEach(link => {
+    ecommerceDomains.forEach(domain => {
+        if (link.href.includes(domain)) {
+            // Crée un élément image pour afficher le logo
+            const logo = document.createElement("img");
+            logo.src = chrome.runtime.getURL("logo.png"); // Utilise une image dans l'extension
+            logo.style.height = "20px";
+            logo.style.marginLeft = "10px";
+
+            // Ajoute l'image à côté du lien
+            link.appendChild(logo);
+        }
+    });
+});
+```
+- Ce script parcourt tous les liens de la page Google et ajoute le logo à ceux qui contiennent des URL correspondant à un domaine e-commerce.
+- **`chrome.runtime.getURL("logo.png")`** est utilisé pour obtenir l'URL du logo intégré dans votre extension.
+
+---
+
+### 3. **Fichier CSS (`styles.css`)** :
+Si nécessaire, vous pouvez styliser le logo pour qu'il soit bien positionné à côté du lien ou ajuster sa taille, comme dans l'exemple ci-dessus.
+
+Exemple de code CSS :
+```css
+img {
+  vertical-align: middle;
+}
+```
+
+Cela garantit que l'image s'affiche correctement à côté des liens, alignée avec le texte.
+
+---
+
+### 4. **Autres configurations dans `Info.plist` (iOS)** :
+- **`NSExtension`** dans le fichier `Info.plist` de l'application iOS est également nécessaire pour déclarer l'extension Safari et ses paramètres, comme mentionné précédemment.
+- **`WKAppBoundDomains`** : Déclare les domaines auxquels l'extension a accès, comme les pages de recherche Google ou les sites de e-commerce.
+
+---
+
+### Conclusion :
+Pour implémenter cette fonctionnalité dans une extension Safari sur iOS, vous aurez besoin de :
+1. **Permissions** : `activeTab`, `storage`, `tabs`, et éventuellement `webRequest`/`webRequestBlocking`.
+2. **`content_scripts`** pour injecter le script sur les pages de recherche Google.
+3. **JavaScript et CSS** pour identifier les liens de e-commerce et y ajouter le logo.
+
+Avec cette configuration, votre extension sera capable d'interagir avec les résultats de recherche sur Google et d'afficher un logo à côté des liens des sites de e-commerce.
