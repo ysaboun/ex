@@ -1,0 +1,141 @@
+Pour permettre à une **extension Safari Web** (embarquée dans une application Swift iOS) de **communiquer avec l'application** et vérifier si l'utilisateur est connecté, vous devez configurer les permissions nécessaires dans le fichier `manifest.json`. Voici les détails des permissions et paramètres requis :
+
+---
+
+### 1. **Permissions principales pour la communication avec l'application** :
+Ajoutez les permissions suivantes dans le `manifest.json` :
+
+```json
+"permissions": [
+  "nativeMessaging",
+  "storage",
+  "activeTab",
+  "tabs"
+],
+"host_permissions": [
+  "*://*/*"
+]
+```
+
+#### Description :
+- **`nativeMessaging`** : Permet la communication entre l'extension web et l'application native. C'est crucial pour transmettre les informations comme le statut de connexion.
+- **`storage`** : Nécessaire si l'extension doit stocker des informations (comme des tokens de connexion ou des états utilisateur).
+- **`activeTab`** : Permet d'interagir avec l'onglet actif, par exemple, pour vérifier si l'utilisateur est sur un domaine spécifique où l'état de connexion doit être vérifié.
+- **`tabs`** : Nécessaire si l'extension doit accéder aux informations de plusieurs onglets.
+
+---
+
+### 2. **Background script (pour gérer la communication)** :
+Configurez un **background script** dans le `manifest.json` pour traiter les requêtes en arrière-plan et interagir avec l'application.
+
+```json
+"background": {
+  "service_worker": "background.js"
+}
+```
+
+Dans **`background.js`**, vous pouvez établir la communication avec l'application native via une API de messagerie native, comme ceci :
+
+```javascript
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "checkUserStatus") {
+    chrome.runtime.sendNativeMessage("com.yourcompany.app", { action: "isUserConnected" }, (response) => {
+      sendResponse(response);
+    });
+    return true; // Indique que la réponse sera envoyée de manière asynchrone.
+  }
+});
+```
+
+---
+
+### 3. **Content scripts (pour injecter des scripts si nécessaire)** :
+Si vous devez exécuter un script sur certaines pages pour interagir avec le contenu ou vérifier la connexion utilisateur, déclarez un **content script** dans le `manifest.json` :
+
+```json
+"content_scripts": [
+  {
+    "matches": ["*://*.yourdomain.com/*"],
+    "js": ["content.js"]
+  }
+]
+```
+
+Le script injecté peut envoyer un message au service worker de l'extension pour demander le statut de l'utilisateur.
+
+---
+
+### 4. **Native Messaging Host (déclaré dans l'application native)** :
+Pour que l'extension puisse communiquer avec l'application iOS, vous devez déclarer un **Native Messaging Host** dans l'application. Cela implique :
+
+1. **Créer un fichier JSON de configuration** (par exemple, `com.yourcompany.app.json`) :
+   ```json
+   {
+     "name": "com.yourcompany.app",
+     "description": "Native messaging host for user authentication",
+     "path": "/path/to/your/native/app",
+     "type": "stdio",
+     "allowed_extensions": [
+       "com.yourcompany.extension"
+     ]
+   }
+   ```
+
+2. **Enregistrer ce fichier JSON** dans le bon répertoire pour Safari sur macOS ou iOS (selon la documentation d'Apple).
+
+---
+
+### 5. **Autorisations supplémentaires (optionnelles)** :
+Selon les besoins spécifiques de l'extension, vous pouvez ajouter :
+- **`cookies`** : Si vous devez lire ou écrire des cookies pour gérer les sessions utilisateur.
+- **`webRequest` et `webRequestBlocking`** : Si l'extension doit intercepter ou modifier des requêtes pour vérifier les données utilisateur (par exemple, un token d'authentification).
+
+Exemple :
+```json
+"permissions": [
+  "cookies",
+  "webRequest",
+  "webRequestBlocking"
+]
+```
+
+---
+
+### Exemple complet d'un `manifest.json` :
+Voici un exemple de configuration typique :
+
+```json
+{
+  "manifest_version": 3,
+  "name": "Safari Extension with App Communication",
+  "version": "1.0",
+  "permissions": [
+    "nativeMessaging",
+    "storage",
+    "activeTab",
+    "tabs",
+    "cookies"
+  ],
+  "host_permissions": [
+    "*://*.yourdomain.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.yourdomain.com/*"],
+      "js": ["content.js"]
+    }
+  ]
+}
+```
+
+---
+
+### Notes importantes :
+1. **Enregistrement de l'extension et de l'application** : Assurez-vous que votre extension et l'application native partagent un **identifiant commun** pour que la messagerie native fonctionne.
+2. **Approbation d'Apple** : Apple peut imposer des restrictions supplémentaires pour garantir la confidentialité et la sécurité des données utilisateur. Assurez-vous de respecter leurs directives.
+3. **Gestion des permissions par l'utilisateur** : Sur iOS, l'utilisateur devra activer manuellement l'extension Safari via les paramètres, et l'application peut inclure des instructions claires pour guider cette étape.
+
+Si vous avez des cas d'utilisation spécifiques ou des contraintes, je peux affiner davantage cette configuration.
