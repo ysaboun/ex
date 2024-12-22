@@ -1,0 +1,19 @@
+On peut traduire ce type de logique en écriture mathématique en utilisant des opérateurs logiques comme \(\land\) (ET), \(\lor\) (OU), et \(\implies\) (implique). Voici une proposition :
+
+Soit :  
+- \(A\) : "BFF est utilisé"  
+- \(B\) : "Cookies sont utilisés"  
+- \(C\) : "La solution n°2 est appliquée"
+
+La condition "Si pas BFF et pas cookie implique solution n°2" peut s'écrire :  
+\[
+(\neg A \land \neg B) \implies C
+\]
+
+### Explication :
+1. \(\neg A\) signifie "BFF n'est pas utilisé".
+2. \(\neg B\) signifie "Cookies ne sont pas utilisés".
+3. \(\land\) signifie "ET", donc \(\neg A \land \neg B\) représente la situation où ni BFF ni Cookies ne sont utilisés.
+4. \(\implies\) signifie "implique", indiquant que dans ce cas, la solution n°2 est choisie.
+
+Ainsi, cette écriture formalise logiquement la contrainte donnée.
