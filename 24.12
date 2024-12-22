@@ -1,0 +1,76 @@
+Le **Device Fingerprinting** (ou empreinte numérique d’un appareil) est une technique permettant d’identifier un appareil de manière unique sur Internet ou dans une application, sans utiliser de cookies. Il s'agit de collecter un ensemble de données spécifiques à un appareil et à son environnement afin de créer une "empreinte" unique. 
+
+### **Comment ça fonctionne ?**
+Le **device fingerprinting** s'appuie sur une combinaison de caractéristiques techniques, comme :  
+1. **Caractéristiques matérielles :**
+   - Type d’appareil (ordinateur, mobile, tablette).
+   - Résolution de l’écran.
+   - Processeur, GPU, RAM.
+
+2. **Caractéristiques logicielles :**
+   - Système d’exploitation (Windows, macOS, Android, iOS).
+   - Version du navigateur (Chrome, Firefox, Edge, etc.).
+   - Extensions installées dans le navigateur.
+
+3. **Données du navigateur :**
+   - Langue préférée.
+   - Fuseau horaire.
+   - Type et version du navigateur.
+   - Plugins actifs.
+   - Polices de caractères installées.
+   - Données des APIs (Canvas, WebGL).
+
+4. **Données réseau :**
+   - Adresse IP (peut être limitée dans le cas des proxys ou VPN).
+   - Paramètres réseau (protocole utilisé, ports ouverts).
+
+5. **Comportements ou données dynamiques :**
+   - Vitesse de frappe (keylogging).
+   - Modèle d’interaction (mouvements de souris, interactions tactiles).
+
+Toutes ces données sont collectées et combinées pour générer une empreinte unique. Bien que certaines données puissent changer (par exemple, mise à jour du navigateur ou changement d’adresse IP), l’ensemble est souvent suffisamment stable pour identifier l’appareil.
+
+---
+
+### **Cas d’utilisation :**
+1. **Sécurité et fraude** :
+   - Détection des fraudes en ligne en identifiant les appareils suspects.
+   - Prévention des attaques par bot ou multi-comptes.
+
+2. **Authentification renforcée** :
+   - Vérification de la cohérence entre l’appareil et un utilisateur connu.
+
+3. **Publicité ciblée** :
+   - Suivi des utilisateurs sur plusieurs sites même sans cookies, pour un ciblage publicitaire.
+
+4. **Analyse de trafic** :
+   - Comprendre les comportements des utilisateurs sur différentes plateformes.
+
+---
+
+### **Avantages :**
+- Fonctionne sans cookies, donc moins affecté par les restrictions liées aux cookies (ex. : GDPR).
+- Peut identifier un appareil même si les cookies ont été supprimés.
+- Résistant à certains types de fraude (ex. : suppression ou manipulation de cookies).
+
+---
+
+### **Limitations et risques :**
+1. **Vie privée :**
+   - Peut être perçu comme une atteinte à la vie privée car il suit les utilisateurs sans leur consentement explicite.
+   - Soumis à des régulations comme le RGPD, qui impose une transparence et un consentement.
+
+2. **Fiabilité :**
+   - L’empreinte peut ne pas être totalement unique (ex. : deux appareils similaires configurés de la même manière peuvent partager la même empreinte).
+
+3. **Évolutivité :**
+   - Les changements dans les navigateurs (comme les mécanismes anti-fingerprinting intégrés à Firefox ou Safari) peuvent limiter son efficacité.
+
+---
+
+### **Exemples d’outils de Device Fingerprinting :**
+- **FingerprintJS** : Génération d'empreintes basées sur le navigateur.
+- **ThreatMetrix** : Plateforme axée sur la détection des fraudes.
+- **Panopticlick (EFF)** : Test de traçabilité via fingerprinting.
+
+C'est un outil puissant, mais son utilisation nécessite une grande attention aux réglementations et à la protection des données personnelles.
