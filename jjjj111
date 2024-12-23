@@ -1,0 +1,119 @@
+### **SubtleCrypto vs Web Crypto**
+
+La distinction entre **SubtleCrypto** et **Web Crypto** n’est pas une opposition stricte, mais plutôt une clarification de leur relation. **SubtleCrypto** est une interface spécifique fournie par l'API **Web Crypto**. Voici une comparaison détaillée pour mieux comprendre :
+
+---
+
+### **1. Définition**
+
+- **Web Crypto API** :  
+  Une API standard du W3C intégrée dans les navigateurs modernes pour effectuer des opérations cryptographiques sécurisées (chiffrement, signature, génération de clés, etc.). Elle englobe plusieurs fonctionnalités, y compris SubtleCrypto.
+
+- **SubtleCrypto** :  
+  Une interface principale de l'API Web Crypto utilisée pour effectuer des opérations cryptographiques complexes de manière asynchrone. Elle est appelée via l'objet `crypto.subtle`.
+
+---
+
+### **2. Accès et Portée**
+
+- **Web Crypto** :  
+  L'objet principal est accessible globalement via `window.crypto`. Il contient les sous-modules comme `crypto.getRandomValues` pour générer des nombres aléatoires cryptographiquement sécurisés, et `crypto.subtle` pour les opérations avancées.
+
+- **SubtleCrypto** :  
+  Accessible uniquement via `window.crypto.subtle`. Il est conçu pour les opérations plus sophistiquées comme :
+  - Le chiffrement/déchiffrement.
+  - La signature/validation.
+  - La dérivation de clés.
+  - L'import/export de clés.
+
+---
+
+### **3. Cas d’utilisation**
+
+#### **Web Crypto**
+- Génération de nombres aléatoires sécurisés :
+  ```javascript
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  console.log(array);
+  ```
+
+#### **SubtleCrypto**
+- Chiffrement AES-GCM :
+  ```javascript
+  const key = await crypto.subtle.generateKey(
+    { name: 'AES-GCM', length: 256 },
+    true,
+    ['encrypt', 'decrypt']
+  );
+
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv: new Uint8Array(12) },
+    key,
+    new TextEncoder().encode('Hello, World!')
+  );
+  console.log(new Uint8Array(encrypted));
+  ```
+
+---
+
+### **4. Comparaison des fonctionnalités principales**
+
+| **Caractéristique**        | **Web Crypto (général)**         | **SubtleCrypto (spécifique)**               |
+|----------------------------|----------------------------------|---------------------------------------------|
+| **Accès**                  | `crypto`                        | `crypto.subtle`                             |
+| **Opérations de base**     | Génération aléatoire (`getRandomValues`) | Chiffrement, signature, import/export de clés |
+| **Asynchrone**             | Non                            | Oui (promesses)                             |
+| **Performances**           | Très rapide (opérations simples) | Plus lent (opérations complexes)           |
+| **API simplifiée**         | Oui                             | Non (orientée pour développeurs avancés)    |
+| **Compatibilité**          | Support large                  | Support large, mais API plus complexe       |
+
+---
+
+### **5. Limitations**
+
+#### **Web Crypto (sans SubtleCrypto)**
+- Ne permet pas directement les opérations de chiffrement, déchiffrement ou signature.
+- Idéal pour les cas simples comme la génération de valeurs aléatoires sécurisées.
+
+#### **SubtleCrypto**
+- Les algorithmes disponibles peuvent être limités selon le navigateur.
+- Les opérations sont asynchrones et parfois complexes à utiliser.
+- Ne supporte pas directement le chiffrement symétrique comme DES ou Blowfish.
+
+---
+
+### **6. Exemple combiné**
+
+Voici un exemple combinant les deux pour une meilleure perspective :
+
+```javascript
+// Générer des nombres aléatoires sécurisés (Web Crypto)
+const iv = crypto.getRandomValues(new Uint8Array(12));
+
+// Créer une clé et chiffrer des données (SubtleCrypto)
+(async () => {
+  const key = await crypto.subtle.generateKey(
+    { name: 'AES-GCM', length: 256 },
+    true,
+    ['encrypt', 'decrypt']
+  );
+
+  const data = new TextEncoder().encode('Hello, SubtleCrypto!');
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    data
+  );
+
+  console.log('Encrypted Data:', new Uint8Array(encrypted));
+})();
+```
+
+---
+
+### **7. Conclusion**
+
+- Utilisez **Web Crypto** pour des besoins simples (comme la génération aléatoire).
+- Utilisez **SubtleCrypto** pour des opérations cryptographiques avancées (chiffrement, dérivation de clés, etc.).
+- **Web Crypto API** englobe tout, tandis que **SubtleCrypto** est une partie clé pour des cas d’utilisation complexes et sécurisés.
