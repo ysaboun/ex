@@ -1,0 +1,166 @@
+Le flux Authorization Code avec PKCE, nonce et state en intégrant un mécanisme **DPoP (Demonstrating Proof of Possession)** entre un **Service Worker** et **PingFederate** implique plusieurs étapes spécifiques. Voici une explication complète et un exemple pratique.
+
+---
+
+### **Pré-requis**
+1. **PingFederate** configuré pour:
+   - Gérer le flux Authorization Code avec PKCE.
+   - Supporter DPoP (activer le support DPoP dans les configurations OAuth).
+   - Utiliser `state` et `nonce` pour prévenir les attaques de falsification de requêtes et de relecture.
+   
+2. **Service Worker**:
+   - Capable de gérer les requêtes HTTP.
+   - Utiliser une clé privée pour signer les jetons DPoP.
+
+---
+
+### **Étapes du flux OAuth avec PKCE et DPoP**
+
+#### **1. Génération de la clé privée DPoP**
+Le Service Worker génère une clé privée asymétrique (EC ou RSA) à utiliser pour signer les jetons DPoP.
+
+```javascript
+async function generateKeyPair() {
+    return await crypto.subtle.generateKey(
+        { name: "ECDSA", namedCurve: "P-256" },
+        true,
+        ["sign", "verify"]
+    );
+}
+const keyPair = await generateKeyPair();
+```
+
+---
+
+#### **2. Construction de l’URL d’autorisation**
+Inclut les paramètres nécessaires (`state`, `nonce`, `code_challenge`, etc.).
+
+```javascript
+const clientId = "your-client-id";
+const redirectUri = "https://your-app.com/callback";
+const state = crypto.randomUUID();
+const nonce = crypto.randomUUID();
+
+// Générer le code challenge pour PKCE
+const codeVerifier = crypto.randomUUID();
+const codeChallenge = btoa(
+    String.fromCharCode(...new Uint8Array(await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(codeVerifier)
+    )))
+).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+const authUrl = `https://pingfederate.com/as/authorization.oauth2?response_type=code` +
+    `&client_id=${encodeURIComponent(clientId)}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    `&code_challenge=${encodeURIComponent(codeChallenge)}` +
+    `&code_challenge_method=S256` +
+    `&state=${encodeURIComponent(state)}` +
+    `&nonce=${encodeURIComponent(nonce)}`;
+```
+
+---
+
+#### **3. Authentification et récupération du code d’autorisation**
+L'utilisateur est redirigé vers `authUrl`. Après authentification, PingFederate redirige l'utilisateur vers `redirect_uri` avec le `code` d'autorisation.
+
+---
+
+#### **4. Création du jeton DPoP**
+Avant d’échanger le code d’autorisation contre un access token, le Service Worker signe un jeton DPoP.
+
+```javascript
+async function createDpopToken(method, url, keyPair) {
+    const dpopPayload = {
+        jti: crypto.randomUUID(), // Unique ID for the DPoP token
+        htm: method, // HTTP method (e.g., POST)
+        htu: url, // HTTP URI
+        iat: Math.floor(Date.now() / 1000), // Issued at time
+    };
+
+    const dpopHeader = {
+        alg: "ES256",
+        typ: "dpop+jwt",
+        jwk: (await crypto.subtle.exportKey("jwk", keyPair.publicKey)),
+    };
+
+    const base64UrlEncode = (obj) =>
+        btoa(JSON.stringify(obj)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+    const encodedHeader = base64UrlEncode(dpopHeader);
+    const encodedPayload = base64UrlEncode(dpopPayload);
+
+    const signature = await crypto.subtle.sign(
+        { name: "ECDSA", hash: { name: "SHA-256" } },
+        keyPair.privateKey,
+        new TextEncoder().encode(`${encodedHeader}.${encodedPayload}`)
+    );
+
+    const encodedSignature = btoa(
+        String.fromCharCode(...new Uint8Array(signature))
+    ).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+    return `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
+}
+```
+
+---
+
+#### **5. Échange du code d’autorisation**
+Inclut le jeton DPoP dans l’en-tête.
+
+```javascript
+const tokenEndpoint = "https://pingfederate.com/as/token.oauth2";
+
+const dpopToken = await createDpopToken("POST", tokenEndpoint, keyPair);
+
+const response = await fetch(tokenEndpoint, {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": `DPoP ${dpopToken}`,
+    },
+    body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code: authorizationCode,
+        redirect_uri: redirectUri,
+        client_id: clientId,
+        code_verifier: codeVerifier,
+    }),
+});
+
+const tokens = await response.json();
+console.log(tokens);
+```
+
+---
+
+#### **6. Utilisation du jeton avec DPoP**
+Pour chaque requête avec le token d’accès, un nouveau jeton DPoP est généré.
+
+```javascript
+const protectedResource = "https://api.your-service.com/resource";
+
+const dpopTokenForResource = await createDpopToken("GET", protectedResource, keyPair);
+
+const resourceResponse = await fetch(protectedResource, {
+    method: "GET",
+    headers: {
+        "Authorization": `Bearer ${tokens.access_token}`,
+        "DPoP": dpopTokenForResource,
+    },
+});
+
+const resourceData = await resourceResponse.json();
+console.log(resourceData);
+```
+
+---
+
+### **Résumé des points clés**
+1. **DPoP Tokens**: Chaque requête utilise un jeton DPoP signé avec la clé privée.
+2. **PKCE**: Utilisé pour sécuriser l’échange d’autorisation.
+3. **State et Nonce**: Protègent contre les attaques de CSRF et de relecture.
+4. **Service Worker**: Gère la génération des clés et la signature des jetons DPoP.
+
+Si besoin, je peux fournir des exemples pour un environnement spécifique ou approfondir un point.
