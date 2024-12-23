@@ -1,0 +1,196 @@
+Voici un exemple complet et fonctionnel du flux OAuth 2.0 avec PKCE, nonce, state et DPoP. Cet exemple montre comment utiliser l'URL d'autorisation pour démarrer le flux et couvre toutes les étapes nécessaires.
+
+### **Code Complet**
+
+#### 1. **Génération de l'URL d'autorisation et redirection**
+Cette partie génère les paramètres nécessaires (code_challenge, state, nonce) et redirige l'utilisateur vers l'URL d'autorisation.
+
+```javascript
+// Génération de paramètres pour PKCE, state et nonce
+async function generatePKCE() {
+    const state = crypto.randomUUID();
+    const nonce = crypto.randomUUID();
+    const codeVerifier = crypto.randomUUID();
+    const codeChallenge = btoa(
+        String.fromCharCode(...new Uint8Array(await crypto.subtle.digest(
+            "SHA-256",
+            new TextEncoder().encode(codeVerifier)
+        )))
+    ).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+    return { state, nonce, codeVerifier, codeChallenge };
+}
+
+// Construction de l'URL d'autorisation et redirection
+async function redirectToAuthEndpoint() {
+    const { state, nonce, codeVerifier, codeChallenge } = await generatePKCE();
+
+    // Enregistrer localement le codeVerifier et le state pour validation future
+    localStorage.setItem("oauth_code_verifier", codeVerifier);
+    localStorage.setItem("oauth_state", state);
+
+    const authUrl = `https://pingfederate.com/as/authorization.oauth2?` +
+        `response_type=code` +
+        `&client_id=${encodeURIComponent("your-client-id")}` +
+        `&redirect_uri=${encodeURIComponent("https://your-app.com/callback")}` +
+        `&code_challenge=${encodeURIComponent(codeChallenge)}` +
+        `&code_challenge_method=S256` +
+        `&state=${encodeURIComponent(state)}` +
+        `&nonce=${encodeURIComponent(nonce)}`;
+
+    // Redirection vers l'URL d'autorisation
+    window.location.href = authUrl;
+}
+
+// Démarrer le flux OAuth
+redirectToAuthEndpoint();
+```
+
+---
+
+#### 2. **Gestion de la redirection après authentification**
+Lorsque l'utilisateur est redirigé vers votre `redirect_uri`, vous devez capturer les paramètres de la réponse (code, state).
+
+```javascript
+// Extraction des paramètres de l'URL après redirection
+function getQueryParams() {
+    const params = new URLSearchParams(window.location.search);
+    return {
+        code: params.get("code"),
+        state: params.get("state"),
+    };
+}
+
+// Validation du state et récupération du code d'autorisation
+function validateStateAndExtractCode() {
+    const { code, state } = getQueryParams();
+    const storedState = localStorage.getItem("oauth_state");
+
+    if (state !== storedState) {
+        throw new Error("Invalid state parameter");
+    }
+
+    return code;
+}
+```
+
+---
+
+#### 3. **Échange du code d'autorisation contre un access token**
+Inclut la signature DPoP dans l'en-tête HTTP pour sécuriser l'échange.
+
+```javascript
+async function createDpopToken(method, url, keyPair) {
+    const dpopPayload = {
+        jti: crypto.randomUUID(),
+        htm: method,
+        htu: url,
+        iat: Math.floor(Date.now() / 1000),
+    };
+
+    const dpopHeader = {
+        alg: "ES256",
+        typ: "dpop+jwt",
+        jwk: (await crypto.subtle.exportKey("jwk", keyPair.publicKey)),
+    };
+
+    const base64UrlEncode = (obj) =>
+        btoa(JSON.stringify(obj)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+    const encodedHeader = base64UrlEncode(dpopHeader);
+    const encodedPayload = base64UrlEncode(dpopPayload);
+
+    const signature = await crypto.subtle.sign(
+        { name: "ECDSA", hash: { name: "SHA-256" } },
+        keyPair.privateKey,
+        new TextEncoder().encode(`${encodedHeader}.${encodedPayload}`)
+    );
+
+    const encodedSignature = btoa(
+        String.fromCharCode(...new Uint8Array(signature))
+    ).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+    return `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
+}
+
+async function exchangeCodeForToken(code, keyPair) {
+    const tokenEndpoint = "https://pingfederate.com/as/token.oauth2";
+    const codeVerifier = localStorage.getItem("oauth_code_verifier");
+    const dpopToken = await createDpopToken("POST", tokenEndpoint, keyPair);
+
+    const response = await fetch(tokenEndpoint, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "DPoP": dpopToken,
+        },
+        body: new URLSearchParams({
+            grant_type: "authorization_code",
+            code,
+            redirect_uri: "https://your-app.com/callback",
+            client_id: "your-client-id",
+            code_verifier: codeVerifier,
+        }),
+    });
+
+    if (!response.ok) {
+        throw new Error("Failed to exchange authorization code for token");
+    }
+
+    return await response.json();
+}
+
+// Exemple d’utilisation
+(async () => {
+    const code = validateStateAndExtractCode();
+    const keyPair = await generateKeyPair(); // Génère la clé pour DPoP
+    const tokens = await exchangeCodeForToken(code, keyPair);
+
+    console.log("Access Token:", tokens.access_token);
+})();
+```
+
+---
+
+#### 4. **Utilisation de l'access token avec DPoP**
+Les requêtes aux ressources protégées incluent l'access token et un nouveau jeton DPoP.
+
+```javascript
+async function callProtectedResource(resourceUrl, accessToken, keyPair) {
+    const dpopToken = await createDpopToken("GET", resourceUrl, keyPair);
+
+    const response = await fetch(resourceUrl, {
+        method: "GET",
+        headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "DPoP": dpopToken,
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error("Failed to fetch protected resource");
+    }
+
+    return await response.json();
+}
+
+// Exemple d’utilisation
+(async () => {
+    const resourceUrl = "https://api.your-service.com/resource";
+    const tokens = /* Récupérez vos tokens de l’étape précédente */;
+    const keyPair = /* Réutilisez la paire de clés DPoP */;
+    const resourceData = await callProtectedResource(resourceUrl, tokens.access_token, keyPair);
+
+    console.log("Protected Resource Data:", resourceData);
+})();
+```
+
+---
+
+### **Résumé des étapes**
+1. **Redirection vers l'URL d'autorisation** (`redirectToAuthEndpoint`).
+2. **Récupération et validation du code d'autorisation** (`validateStateAndExtractCode`).
+3. **Échange du code contre un access token** (`exchangeCodeForToken`).
+4. **Accès aux ressources protégées** avec DPoP (`callProtectedResource`).
+
+Si vous avez des questions supplémentaires ou si vous souhaitez intégrer cela dans un cadre spécifique (framework ou environnement), je suis à votre disposition !
