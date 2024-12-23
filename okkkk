@@ -1,0 +1,140 @@
+Voici une version modifiée du code pour utiliser une clé de chiffrement dynamique, générée lors de l'installation du service worker. La clé dynamique est générée avec l'API Web Crypto et stockée en mémoire volatile, afin qu'elle ne soit pas statique et reste sécurisée.
+
+### Code modifié :
+
+```javascript
+// Mémoire volatile pour stocker la clé de chiffrement et le token
+let dynamicKey = null;
+let tokenStorage = {
+  encryptedData: null,
+  iv: null
+};
+
+// Fonction pour générer une clé AES-256 dynamique
+async function generateDynamicKey() {
+  return crypto.subtle.generateKey(
+    { name: "AES-GCM", length: 256 },
+    true, // La clé est extractible pour des usages spécifiques si nécessaire
+    ["encrypt", "decrypt"]
+  );
+}
+
+// Fonction pour exporter une clé CryptoKey en format brut (facultatif, pour inspection)
+async function exportKey(key) {
+  const rawKey = await crypto.subtle.exportKey("raw", key);
+  return new Uint8Array(rawKey);
+}
+
+// Fonction pour chiffrer le token
+async function encryptToken(token) {
+  if (!dynamicKey) {
+    throw new Error("La clé de chiffrement n'est pas générée.");
+  }
+  const encoder = new TextEncoder();
+  const iv = crypto.getRandomValues(new Uint8Array(12)); // Génère un IV aléatoire
+  const encrypted = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    dynamicKey,
+    encoder.encode(token)
+  );
+  return { encryptedData: new Uint8Array(encrypted), iv }; // Retourne les données chiffrées et l'IV
+}
+
+// Fonction pour déchiffrer le token
+async function decryptToken(encryptedData, iv) {
+  if (!dynamicKey) {
+    throw new Error("La clé de chiffrement n'est pas générée.");
+  }
+  const decrypted = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv },
+    dynamicKey,
+    encryptedData
+  );
+  const decoder = new TextDecoder();
+  return decoder.decode(decrypted);
+}
+
+// Événement d'installation du service worker
+self.addEventListener('install', async (event) => {
+  console.log('Service Worker installé');
+
+  // Générer la clé dynamique lors de l'installation
+  dynamicKey = await generateDynamicKey();
+  console.log("Clé dynamique générée lors de l'installation.");
+
+  event.waitUntil(
+    caches.open('v1').then(cache => {
+      return cache.addAll([
+        '/',
+        '/index.html'
+      ]);
+    })
+  );
+  self.skipWaiting(); // Passe immédiatement à l'activation
+});
+
+// Événement d'activation du service worker
+self.addEventListener('activate', (event) => {
+  console.log('Service Worker activé');
+});
+
+// Événement fetch pour gérer les requêtes réseau
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    caches.match(event.request).then(response => {
+      return response || fetch(event.request);
+    })
+  );
+});
+
+// Événement pour gérer les messages entrants
+self.addEventListener('message', async (event) => {
+  if (event.data.action === 'storeToken') {
+    // Chiffrer et stocker le token
+    const { token } = event.data;
+    const { encryptedData, iv } = await encryptToken(token);
+    tokenStorage.encryptedData = encryptedData;
+    tokenStorage.iv = iv;
+    event.ports[0].postMessage({ success: true });
+  } else if (event.data.action === 'retrieveToken') {
+    // Déchiffrer et renvoyer le token
+    if (tokenStorage.encryptedData && tokenStorage.iv) {
+      const token = await decryptToken(tokenStorage.encryptedData, tokenStorage.iv);
+      event.ports[0].postMessage({ token });
+    } else {
+      event.ports[0].postMessage({ error: "Aucun token stocké." });
+    }
+  }
+});
+```
+
+### Points principaux :
+1. **Clé dynamique** :
+   - Une clé AES-256 est générée dynamiquement avec `crypto.subtle.generateKey()` lors de l'installation du service worker.
+   - La clé est stockée en mémoire volatile (`dynamicKey`), donc elle n'est pas persistée.
+
+2. **Messages pour communication** :
+   - La page principale peut envoyer des messages au service worker pour stocker (`storeToken`) ou récupérer (`retrieveToken`) un token.
+
+3. **Gestion sécurisée** :
+   - Les IV (vecteurs d'initialisation) sont aléatoires pour chaque chiffrement.
+   - Le token n'est jamais stocké en clair dans le service worker.
+
+### Exemple d'interaction avec la page principale :
+Dans votre fichier principal (e.g., `main.js`), envoyez des messages au service worker comme suit :
+
+```javascript
+if (navigator.serviceWorker.controller) {
+  const messageChannel = new MessageChannel();
+
+  // Enregistrer un token dans le service worker
+  messageChannel.port1.onmessage = (event) => {
+    console.log('Réponse du service worker :', event.data);
+  };
+
+  navigator.serviceWorker.controller.postMessage(
+    { action: 'storeToken', token: 'mon-super-token' },
+    [messageChannel.port2]
+  );
+}
+```
