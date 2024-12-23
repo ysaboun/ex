@@ -1,0 +1,143 @@
+### Documentation Technique : Service Worker pour Chiffrement de Token, Hachage et Gestion des Requêtes API
+
+---
+
+#### Introduction
+Ce code représente un service worker qui implémente des mécanismes de chiffrement AES-256 pour protéger les tokens, ainsi que des fonctions permettant de générer des clés cryptographiques dynamiques, de déchiffrer les tokens et de gérer diverses requêtes API. Il utilise l'API `crypto.subtle` du navigateur pour les opérations de chiffrement/déchiffrement et le hachage SHA-256 pour la création d'empreintes de périphériques.
+
+---
+
+### Structure du Code
+
+Le code est structuré en plusieurs sections principales :
+
+1. **Déclaration des variables et objets :**
+   - `dynamicKey`: Stocke la clé de chiffrement dynamique utilisée pour le chiffrement et le déchiffrement AES.
+   - `tokenStorage`: Objet contenant les données chiffrées et le vecteur d'initialisation (IV) utilisés pour le chiffrement du token.
+
+2. **Fonctions principales :**
+   - `generateDynamicKey()`: Génère une clé AES-256 dynamique pour le chiffrement.
+   - `exportKey()`: Exporte la clé au format brut, utile pour l'inspection ou l'audit.
+   - `encryptToken()`: Chiffre un token avec la clé dynamique générée et retourne les données chiffrées ainsi que l'IV utilisé.
+   - `decryptToken()`: Déchiffre les données chiffrées avec l'IV correspondant, retournant le token en clair.
+
+3. **Gestion des événements du Service Worker :**
+   - `install`: Installe le service worker, génère une clé dynamique et l'active.
+   - `activate`: Active le service worker.
+   - `fetch`: Gère les requêtes de récupération à partir du cache ou du réseau.
+   - `message`: Répond à divers messages envoyés au service worker, incluant des actions pour stocker, récupérer des tokens, et interagir avec les API.
+
+---
+
+### Explication des Fonctionnalités
+
+#### 1. **Génération de la Clé Dynamique (AES-256)**
+```javascript
+async function generateDynamicKey() {
+  return crypto.subtle.generateKey(
+    { name: "AES-GCM", length: 256 },
+    true, 
+    ["encrypt", "decrypt"]
+  );
+}
+```
+La fonction génère une clé AES-256 en utilisant l'algorithme `AES-GCM`. La clé générée est utilisée pour chiffrer et déchiffrer les données.
+
+#### 2. **Exportation de la Clé pour Inspection**
+```javascript
+async function exportKey(key) {
+  const rawKey = await crypto.subtle.exportKey("raw", key);
+  return new Uint8Array(rawKey);
+}
+```
+Cette fonction exporte la clé dans son format brut, ce qui permet une inspection ou une vérification supplémentaire.
+
+#### 3. **Chiffrement du Token**
+```javascript
+async function encryptToken(token) {
+  if (!dynamicKey) {
+    throw new Error("La clé de chiffrement n'est pas générée.");
+  }
+  const encoder = new TextEncoder();
+  const iv = crypto.getRandomValues(new Uint8Array(12)); // IV aléatoire
+  const encrypted = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    dynamicKey,
+    encoder.encode(token)
+  );
+  return { encryptedData: new Uint8Array(encrypted), iv };
+}
+```
+La fonction `encryptToken` chiffre un token en utilisant la clé dynamique AES et génère un vecteur d'initialisation (IV) aléatoire. Elle retourne les données chiffrées et l'IV pour pouvoir les utiliser lors du déchiffrement.
+
+#### 4. **Déchiffrement du Token**
+```javascript
+async function decryptToken(encryptedData, iv) {
+  if (!dynamicKey) {
+    throw new Error("La clé de chiffrement n'est pas générée.");
+  }
+  const decrypted = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv },
+    dynamicKey,
+    encryptedData
+  );
+  const decoder = new TextDecoder();
+  return decoder.decode(decrypted);
+}
+```
+La fonction `decryptToken` utilise la clé dynamique et l'IV pour déchiffrer les données chiffrées et retourner le token en texte clair.
+
+---
+
+### Gestion des Événements
+
+#### 1. **Installation et Activation du Service Worker**
+```javascript
+self.addEventListener('install', async (event) => {
+  dynamicKey = await generateDynamicKey();
+  console.log("Clé dynamique générée lors de l'installation.");
+  self.skipWaiting(); // Force l'activation immédiate du service worker
+});
+```
+Lors de l'installation, une clé dynamique est générée. Le service worker saute l'attente pour s'activer immédiatement.
+
+#### 2. **Gestion des Messages**
+Le service worker répond à différentes actions envoyées depuis la page principale via l'API de messages. Il supporte plusieurs actions :
+
+- **`storeToken`** : Chiffre un token et le stocke dans `tokenStorage`.
+- **`retrieveToken`** : Récupère et déchiffre le token stocké.
+- **`authorize_code`** : Effectue un hachage SHA-256 sur les informations du périphérique et envoie une requête HTTP avec un en-tête d'empreinte.
+- **`refresh_token`** : Effectue une requête pour rafraîchir un token.
+- **`api`** : Effectue une requête GET à une API spécifique, en envoyant les informations du périphérique.
+
+---
+
+### Fonctionnalités Complémentaires
+
+#### 1. **Hachage SHA-256 du Périphérique**
+```javascript
+const data = encoder.encode(deviceInfo);
+crypto.subtle.digest('SHA-256', data).then(hashBuffer => {
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
+  console.log('Device Fingerprint (SHA-256):', hashHex);
+});
+```
+La fonction `authorize_code` génère un hachage SHA-256 des informations du périphérique, ce qui crée une empreinte unique qui peut être envoyée au serveur pour l'autorisation.
+
+#### 2. **Requêtes API**
+Les actions `refresh_token` et `api` gèrent l'envoi de requêtes POST à des endpoints spécifiques, envoyant des en-têtes avec les informations du périphérique pour assurer la sécurité et l'authentification.
+
+---
+
+### Sécurité
+
+- **Chiffrement AES-256** : La clé est générée dynamiquement et utilisée pour chiffrer et déchiffrer les tokens, assurant ainsi la confidentialité des données sensibles.
+- **Vecteur d'initialisation (IV)** : L'IV aléatoire pour chaque chiffrement assure que même si le même token est chiffré plusieurs fois, le résultat est différent à chaque fois.
+- **Hachage SHA-256** : Le hachage des informations du périphérique permet de créer une empreinte unique pour l'authentification sécurisée.
+
+---
+
+### Conclusion
+
+Ce code implémente des mécanismes avancés de sécurité dans un service worker, utilisant des algorithmes de chiffrement (AES-256) et de hachage (SHA-256) pour protéger les tokens et garantir des échanges sécurisés avec le serveur. Les fonctionnalités peuvent être étendues pour inclure des mécanismes de gestion des erreurs, des mises à jour de clés, et des améliorations de la sécurité.
