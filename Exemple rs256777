@@ -1,0 +1,112 @@
+Voici un exemple complet pour générer un **DPoP proof** en **Node.js** en utilisant **RS256**, sans avoir besoin d'OpenSSL pour gérer les clés. Cet exemple utilise uniquement des bibliothèques JavaScript natives et courantes pour gérer les clés RSA.
+
+---
+
+### Étapes
+
+1. **Installer les dépendances nécessaires :**
+   ```bash
+   npm install jsonwebtoken node-jose
+   ```
+
+2. **Code complet :**
+   ```javascript
+   const jose = require('node-jose');
+   const jwt = require('jsonwebtoken');
+
+   // Générer une paire de clés RSA avec node-jose
+   async function generateRSAKeyPair() {
+       const keyStore = jose.JWK.createKeyStore();
+       const key = await keyStore.generate("RSA", 2048, { alg: "RS256", use: "sig" }); // 2048-bit RSA key
+       return {
+           privateKey: key.toPEM(true), // Clé privée au format PEM
+           publicKey: key.toPEM(false), // Clé publique au format PEM
+           jwk: key.toJSON() // Clé publique au format JWK
+       };
+   }
+
+   // Générer un DPoP proof
+   async function generateDPoPProof(httpMethod, httpUri) {
+       const now = Math.floor(Date.now() / 1000); // Timestamp actuel
+       const jti = require('crypto').randomUUID(); // Générer un identifiant unique
+
+       // Générer les clés RSA
+       const { privateKey, jwk } = await generateRSAKeyPair();
+
+       // Construire le payload
+       const payload = {
+           htm: httpMethod.toUpperCase(), // Méthode HTTP
+           htu: httpUri, // URI cible
+           iat: now, // Timestamp actuel
+           jti: jti, // Identifiant unique
+       };
+
+       // Construire l'en-tête
+       const header = {
+           alg: "RS256", // Algorithme RS256
+           typ: "dpop+jwt", // Type spécifique DPoP
+           jwk: jwk, // Clé publique JWK
+       };
+
+       // Générer le token signé
+       const dpopToken = jwt.sign(payload, privateKey, { algorithm: "RS256", header });
+       return { dpopToken, jwk };
+   }
+
+   // Exemple d'utilisation
+   (async () => {
+       const httpMethod = 'GET';
+       const httpUri = 'https://api.example.com/resource';
+
+       const { dpopToken, jwk } = await generateDPoPProof(httpMethod, httpUri);
+
+       console.log('DPoP Token:', dpopToken);
+       console.log('Public JWK:', jwk);
+   })();
+   ```
+
+---
+
+### Explications
+
+1. **Clés RSA :**
+   - Nous utilisons `node-jose` pour générer les clés RSA directement en JavaScript.
+   - La clé publique est automatiquement disponible au format JWK (JSON Web Key), ce qui est nécessaire pour le DPoP.
+
+2. **Header DPoP :**
+   - Le header inclut `alg` (RS256), `typ` (dpop+jwt) et la clé publique en format JWK.
+
+3. **Payload :**
+   - `htm` : Méthode HTTP (ex. `GET`, `POST`).
+   - `htu` : URI cible de l'API.
+   - `iat` : Timestamp actuel en secondes depuis l'époque Unix.
+   - `jti` : Identifiant unique pour chaque preuve DPoP.
+
+4. **JWT Signing :**
+   - Nous utilisons la bibliothèque `jsonwebtoken` pour signer le JWT avec la clé privée RSA.
+
+5. **Sortie :**
+   - Le `dpopToken` peut être utilisé comme preuve DPoP.
+   - La clé publique (au format JWK) peut être partagée avec le serveur pour vérifier la signature.
+
+---
+
+### Exemple de Header DPoP
+
+Une requête HTTP utilisant ce DPoP token ressemblerait à ceci :
+
+```http
+GET /resource HTTP/1.1
+Host: api.example.com
+Authorization: Bearer <access_token>
+DPoP: <dpopToken>
+```
+
+---
+
+### Avantages de cette approche :
+1. **Sans OpenSSL :** Tout est généré en JavaScript pur.
+2. **Format JWK intégré :** Directement utilisable pour DPoP.
+3. **Simple et autonome :** Pas besoin d'outils externes ou de manipuler manuellement des clés.
+
+Ce script est prêt pour des tests locaux et peut être adapté pour un environnement de production en utilisant une clé RSA persistante.
