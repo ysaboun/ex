@@ -1,0 +1,65 @@
+L'erreur `TypeError: Failed to execute 'exportKey' on 'SubtleCrypto': 2nd argument is not of type CryptoKey` se produit généralement lorsque la clé que vous essayez d'utiliser avec la méthode `exportKey` n'est pas une instance valide de `CryptoKey`.
+
+### Scénario typique avec DPoP et clé pair
+Voici un exemple typique de génération de paires de clés DPoP et d'exportation de la clé publique :
+
+#### Exemple de code correct
+```javascript
+// Génération d'une paire de clés
+const generateKeyPair = async () => {
+  const keyPair = await crypto.subtle.generateKey(
+    {
+      name: "ECDSA",
+      namedCurve: "P-256", // Algorithme DPoP utilise généralement "P-256"
+    },
+    true, // Les clés doivent être extractibles pour exportKey
+    ["sign", "verify"] // Usage des clés
+  );
+
+  return keyPair;
+};
+
+// Exportation de la clé publique
+const exportPublicKey = async (keyPair) => {
+  const publicKeyJwk = await crypto.subtle.exportKey(
+    "jwk", // Format d'export
+    keyPair.publicKey // Utiliser `publicKey`
+  );
+  console.log("Clé publique JWK : ", publicKeyJwk);
+  return publicKeyJwk;
+};
+
+// Exemple d'utilisation
+(async () => {
+  try {
+    const keyPair = await generateKeyPair();
+    const publicKeyJwk = await exportPublicKey(keyPair);
+  } catch (error) {
+    console.error("Erreur lors de l'exportation de la clé : ", error);
+  }
+})();
+```
+
+### Points à vérifier pour éviter l'erreur :
+1. **Validité de `CryptoKey` :**
+   - Assurez-vous que vous passez `keyPair.publicKey` ou `keyPair.privateKey` et non un autre type de variable.
+   - Par exemple, si vous tentez `exportKey("jwk", keyPair)`, cela échouera car `keyPair` est un objet contenant les clés publiques et privées.
+
+2. **Clés extractibles :**
+   - Lors de la génération de la clé, le paramètre `extractable` doit être défini sur `true` pour que la clé puisse être exportée.
+
+3. **Algorithme et usage :**
+   - Vérifiez que vous avez configuré les bons paramètres pour la méthode `generateKey`.
+
+4. **Format d'export :**
+   - Assurez-vous que vous spécifiez un format valide, comme `"jwk"` ou `"spki"`, selon les besoins.
+
+### Débogage :
+Si l'erreur persiste, ajoutez des journaux pour vérifier la structure et les propriétés des clés générées :
+```javascript
+console.log(keyPair);
+console.log(keyPair.publicKey);
+console.log(keyPair.privateKey);
+```
+
+Cela vous aidera à identifier si le problème vient de la génération des clés ou de leur utilisation.
