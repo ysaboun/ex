@@ -1,0 +1,154 @@
+Si votre DPoP échoue à la vérification de signature sur un outil comme [token.dev](https://token.dev), cela signifie que la signature JWT ne correspond pas aux données attendues, ou que la clé publique utilisée pour la vérification est incorrecte. Voici un guide pas à pas pour résoudre ce problème.
+
+---
+
+## **1. Vérifiez la génération de votre paire de clés**
+Assurez-vous que vous générez correctement la paire de clés. Voici un exemple pour `ECDSA` avec la courbe `P-256`, qui est couramment utilisée pour DPoP :
+
+### Exemple en JavaScript :
+```javascript
+// Génération d'une paire de clés
+const generateKeyPair = async () => {
+  return await crypto.subtle.generateKey(
+    {
+      name: "ECDSA",
+      namedCurve: "P-256", // Courbe elliptique utilisée
+    },
+    true, // Les clés doivent être extractibles pour l'export
+    ["sign", "verify"] // Usage des clés
+  );
+};
+```
+
+Vérifiez que :
+- La courbe elliptique est bien `P-256`.
+- Les clés sont extractibles (`true`).
+- Vous utilisez correctement `keyPair.privateKey` pour signer et `keyPair.publicKey` pour vérifier.
+
+---
+
+## **2. Exportez correctement la clé publique en JWK**
+La clé publique doit être incluse dans l'en-tête JWT sous forme de JWK (JSON Web Key). Voici comment exporter la clé publique au bon format :
+
+### Exporter la clé publique :
+```javascript
+const exportPublicKey = async (publicKey) => {
+  const jwk = await crypto.subtle.exportKey("jwk", publicKey);
+  console.log("Clé publique JWK :", jwk);
+  return jwk;
+};
+```
+
+Vérifiez que le JWK exporté contient les champs suivants :
+- `kty` : Type de clé, devrait être `"EC"`.
+- `crv` : La courbe, devrait être `"P-256"`.
+- `x` et `y` : Coordonnées de la clé publique (encodées en base64url).
+
+---
+
+## **3. Construisez correctement le JWT DPoP**
+Un jeton DPoP (JWT) a trois parties :
+1. **En-tête (header)** : Contient l'algorithme et la clé publique (en JWK).
+2. **Charge utile (payload)** : Contient les données DPoP spécifiques.
+3. **Signature** : Générée avec la clé privée.
+
+### Exemple de structure d'un DPoP header :
+```json
+{
+  "alg": "ES256", // Algorithme de signature
+  "typ": "dpop+jwt", // Type de JWT
+  "jwk": { 
+    "kty": "EC", 
+    "crv": "P-256",
+    "x": "...", // Coordonnée publique x (Base64url)
+    "y": "..."  // Coordonnée publique y (Base64url)
+  }
+}
+```
+
+---
+
+### Exemple de payload DPoP :
+```json
+{
+  "htm": "POST", // Méthode HTTP
+  "htu": "https://api.example.com/token", // URL cible
+  "iat": 1703412345, // Timestamp (en secondes)
+  "jti": "unique-jwt-id" // ID unique
+}
+```
+
+---
+
+### Signature avec la clé privée :
+En JavaScript :
+```javascript
+const signDpopJwt = async (header, payload, privateKey) => {
+  const encoder = new TextEncoder();
+
+  const headerBase64 = btoa(JSON.stringify(header));
+  const payloadBase64 = btoa(JSON.stringify(payload));
+
+  const dataToSign = `${headerBase64}.${payloadBase64}`;
+  const signature = await crypto.subtle.sign(
+    { name: "ECDSA", hash: { name: "SHA-256" } },
+    privateKey,
+    encoder.encode(dataToSign)
+  );
+
+  return `${dataToSign}.${btoa(String.fromCharCode(...new Uint8Array(signature)))}`;
+};
+```
+
+---
+
+## **4. Causes courantes d'échec de signature**
+- **JWK mal formé** : Vérifiez que la clé publique incluse dans l'en-tête est au bon format.
+- **Algorithme incorrect** : Assurez-vous que vous utilisez `ES256` (ECDSA avec SHA-256).
+- **Données non alignées** : La signature est basée sur l'en-tête et le payload encodés. Si ces données changent entre la signature et la vérification, la signature échoue.
+- **Horodatage invalide** : Le champ `iat` doit être en secondes Unix.
+
+---
+
+## **5. Déboguez avec Token.dev**
+1. Chargez le JWT DPoP généré sur [token.dev](https://token.dev).
+2. Vérifiez :
+   - Si l'en-tête et le payload correspondent à vos attentes.
+   - Si la signature échoue, token.dev fournit souvent un message détaillé indiquant l'origine du problème (ex. "Invalid key" ou "Incorrect signature").
+
+---
+
+## **6. Exemple de JWT DPoP valide**
+### En-tête :
+```json
+{
+  "alg": "ES256",
+  "typ": "dpop+jwt",
+  "jwk": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "lSYfOZOQx2m6MQyBviNl6syMgdHmr5mfC20ZDY3ZMzI",
+    "y": "W2M2xPj5gcds20WzI3ZxsyMlR6mr5Z7YC20ZDdYLmzE"
+  }
+}
+```
+
+### Payload :
+```json
+{
+  "htm": "POST",
+  "htu": "https://api.example.com/token",
+  "iat": 1703412345,
+  "jti": "unique-id-12345"
+}
+```
+
+### Signature :
+La signature doit être générée en utilisant uniquement la clé privée correspondante.
+
+---
+
+Si vous avez besoin d'une analyse plus détaillée, partagez (sans inclure les clés privées) :
+- Votre en-tête JWT.
+- Votre payload.
+- La structure de la clé publique utilisée.
