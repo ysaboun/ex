@@ -1,0 +1,92 @@
+Les algorithmes **RS256** et **ES256** sont deux mécanismes courants pour signer des JSON Web Tokens (JWT). Voici les différences majeures entre ces deux algorithmes :
+
+---
+
+### **1. Type d'algorithme**
+- **RS256** : 
+  - Basé sur RSA (Rivest-Shamir-Adleman), un algorithme de cryptographie asymétrique.
+  - Utilise une paire de clés publique/privée pour signer et vérifier les données.
+  - Appartient à la famille des algorithmes basés sur la factorisation d'entiers.
+
+- **ES256** : 
+  - Basé sur ECC (Elliptic Curve Cryptography) avec la courbe elliptique P-256.
+  - Utilise une paire de clés elliptique pour signer et vérifier les données.
+  - Appartient à une famille plus moderne basée sur des courbes elliptiques.
+
+---
+
+### **2. Taille des clés**
+- **RS256** :
+  - Les clés sont longues (typiquement 2048 ou 4096 bits).
+  - Signature plus lourde en termes de taille (généralement autour de 256 octets pour une clé de 2048 bits).
+
+- **ES256** :
+  - Les clés sont beaucoup plus petites (256 bits seulement).
+  - Signature plus légère en termes de taille (64 octets).
+
+---
+
+### **3. Performance**
+- **RS256** :
+  - Plus lent pour signer et vérifier, car les opérations RSA nécessitent de manipuler de grandes clés.
+  - Lourd en termes de calcul, ce qui peut être un inconvénient dans des environnements contraints comme les mobiles ou l'IoT.
+
+- **ES256** :
+  - Plus rapide et efficace, car les courbes elliptiques nécessitent moins de calculs.
+  - Idéal pour des environnements où les ressources (CPU, mémoire) sont limitées.
+
+---
+
+### **4. Sécurité**
+- **RS256** :
+  - Basé sur la difficulté de factoriser de grands nombres.
+  - Les clés doivent être longues (2048 bits minimum) pour offrir une sécurité moderne.
+  - Moins résilient aux avancées dans la puissance de calcul ou aux futures technologies comme l'informatique quantique.
+
+- **ES256** :
+  - Basé sur la difficulté de résoudre des problèmes liés aux courbes elliptiques.
+  - Offre une sécurité équivalente à RS256 avec des clés beaucoup plus petites.
+  - Plus résilient aux attaques futures en termes de cryptanalyse classique.
+
+---
+
+### **5. Compatibilité**
+- **RS256** :
+  - Plus ancien et largement supporté dans les systèmes et bibliothèques existants.
+  - Très courant dans les environnements d'entreprise traditionnels.
+
+- **ES256** :
+  - Plus moderne, mais nécessite que les systèmes supportent ECC (Elliptic Curve Cryptography).
+  - Moins compatible avec certains systèmes plus anciens ou des bibliothèques limitées.
+
+---
+
+### **6. Cas d'utilisation**
+- **RS256** :
+  - Scénarios où la compatibilité est critique.
+  - Environnements où les performances ne sont pas une contrainte majeure.
+  - Par exemple : infrastructures d'entreprise classiques (ex. serveurs, APIs publiques).
+
+- **ES256** :
+  - Scénarios nécessitant des performances élevées et une empreinte faible (IoT, mobiles).
+  - Cas où la taille de la signature ou des clés est importante.
+  - Par exemple : authentification légère, applications modernes.
+
+---
+
+### **Résumé des différences majeures**
+
+| **Critère**       | **RS256**                        | **ES256**                      |
+|--------------------|----------------------------------|---------------------------------|
+| **Type**          | RSA (factorisation)             | ECC (courbes elliptiques)      |
+| **Taille des clés**| 2048 bits ou plus               | 256 bits                       |
+| **Signature**      | Lourde (~256 octets)            | Légère (64 octets)             |
+| **Performance**    | Plus lent                      | Plus rapide                    |
+| **Compatibilité**  | Très large                     | Moins répandu                  |
+| **Sécurité**       | Basé sur RSA                   | Basé sur ECC (plus robuste)    |
+
+---
+
+### **Recommandations**
+1. **RS256** : Si vous travaillez dans un environnement nécessitant une compatibilité étendue ou des systèmes existants.
+2. **ES256** : Si vous avez des contraintes de performance, des environnements modernes, ou un besoin de signatures plus compactes.
