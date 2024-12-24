@@ -1,0 +1,111 @@
+Voici un exemple complet en Node.js pour générer un DPoP token avec l'algorithme **RS256**, en utilisant une paire de clés RSA pour signer le JWT. Cet exemple utilise la bibliothèque `jsonwebtoken` pour la génération de la signature.
+
+---
+
+### Étapes : 
+
+1. **Installer les dépendances nécessaires** :
+   ```bash
+   npm install jsonwebtoken
+   ```
+
+2. **Créer les clés RSA** :  
+   Vous pouvez générer une paire de clés RSA en local avec OpenSSL :  
+   ```bash
+   openssl genpkey -algorithm RSA -out private_key.pem -pkeyopt rsa_keygen_bits:2048
+   openssl rsa -pubout -in private_key.pem -out public_key.pem
+   ```
+
+3. **Exemple de code Node.js** :
+
+```javascript
+const fs = require('fs');
+const jwt = require('jsonwebtoken');
+
+// Charger la clé privée RSA pour signer le JWT
+const privateKey = fs.readFileSync('private_key.pem', 'utf8');
+
+// Charger la clé publique RSA pour l'inclure dans le DPoP header (JWK)
+const publicKey = fs.readFileSync('public_key.pem', 'utf8');
+
+// Convertir la clé publique en format JWK
+const publicKeyJWK = {
+  kty: "RSA",
+  e: "AQAB", // Exposant public en base64url
+  n: "<Modulus en base64url>" // Modulus public en base64url
+};
+
+// Fonction pour construire un JWK
+function buildJWK(publicKey) {
+  // Utilisez un outil pour convertir votre clé RSA publique au format JWK
+  // Par exemple : https://github.com/Brightspace/node-jwk
+  // Ici, nous simplifions en insérant `n` et `e` manuellement.
+  return {
+    kty: "RSA",
+    e: "AQAB", // Remplacer par l'exposant public en base64url
+    n: "<BASE64URL_ENCODED_MODULUS>",
+  };
+}
+
+// Générer le DPoP proof
+function generateDPoPProof(httpMethod, httpUri) {
+  const now = Math.floor(Date.now() / 1000); // Timestamp en secondes
+  const jti = require('crypto').randomUUID(); // Identifiant unique pour chaque DPoP token
+
+  const payload = {
+    htm: httpMethod.toUpperCase(), // Méthode HTTP (ex: POST)
+    htu: httpUri, // URI de l'API cible
+    iat: now, // Timestamp actuel
+    jti: jti, // Identifiant unique
+  };
+
+  const header = {
+    alg: "RS256", // Algorithme RS256
+    typ: "dpop+jwt", // Type DPoP JWT
+    jwk: buildJWK(publicKey), // Inclure la clé publique au format JWK
+  };
+
+  // Générer le token signé
+  const token = jwt.sign(payload, privateKey, { algorithm: 'RS256', header: header });
+  return token;
+}
+
+// Exemple d'utilisation
+const httpMethod = 'GET';
+const httpUri = 'https://api.example.com/resource';
+
+const dpopProof = generateDPoPProof(httpMethod, httpUri);
+console.log('DPoP Proof:', dpopProof);
+```
+
+---
+
+### Points importants :  
+
+1. **Inclusion de la clé publique dans le JWK** :
+   - La clé publique RSA doit être correctement encodée en format JWK, incluant les paramètres `n` (modulus) et `e` (exponent) en Base64URL.
+   - Vous pouvez utiliser des outils en ligne ou des bibliothèques comme [node-jwk](https://github.com/Brightspace/node-jwk) pour automatiser la conversion.
+
+2. **Payload du JWT** :
+   - `htm` : Méthode HTTP (ex. `GET`, `POST`).
+   - `htu` : URI cible.
+   - `iat` : Temps actuel en secondes depuis l'époque Unix.
+   - `jti` : Un identifiant unique généré pour chaque DPoP token.
+
+3. **Validation côté serveur** :
+   - Le serveur doit valider que :
+     - Le `htu` correspond à l'URI demandé.
+     - Le `htm` correspond à la méthode HTTP utilisée.
+     - La signature du JWT est valide en utilisant la clé publique incluse.
+
+4. **Ajout au header HTTP** :
+   Lors de l'appel à l'API protégée, incluez le DPoP token dans un header personnalisé :
+   ```http
+   DPoP: <dpopProof>
+   Authorization: Bearer <access_token>
+   ```
+
+---
+
+### Résultat attendu :
+Un JWT signé avec RS256 qui peut être utilisé comme preuve DPoP pour des appels sécurisés.
