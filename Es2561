@@ -1,0 +1,5 @@
+ES256 :
+
+Basé sur la difficulté de résoudre des problèmes liés aux courbes elliptiques.
+Offre une sécurité équivalente à RS256 avec des clés beaucoup plus petites.
+Plus résilient aux attaques futures en termes de cryptanalyse classique.
