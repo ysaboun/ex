@@ -1,0 +1,115 @@
+Le **Credential Management System (CMS)** des navigateurs est conçu pour gérer de manière sécurisée les informations d'identification des utilisateurs, telles que les mots de passe ou les clés associées à des comptes. Bien qu'il soit principalement utilisé pour stocker des informations de connexion, il est également possible de l'utiliser pour stocker des **refresh tokens** de manière sécurisée.
+
+Voici comment procéder techniquement pour stocker un **refresh token** dans le CMS en utilisant l'API **Credential Management API** :
+
+---
+
+### **1. Pré-requis**
+- Un navigateur moderne prenant en charge la **Credential Management API** (Chrome, Edge, Firefox, Safari).
+- Un environnement sécurisé (HTTPS obligatoire).
+- Une application qui implémente OAuth 2.0 avec un refresh token.
+
+---
+
+### **2. Étapes pour stocker un refresh token dans le CMS**
+
+#### **a) Sauvegarder le refresh token**
+1. Créer un objet `Credential` de type **PasswordCredential** ou **FederatedCredential**.
+2. Inclure le refresh token dans le champ `password`.
+
+```javascript
+async function storeRefreshToken(refreshToken) {
+  if ('credentials' in navigator) {
+    try {
+      // Créer un objet PasswordCredential
+      const credential = new PasswordCredential({
+        id: 'user-id', // Identifiant unique de l'utilisateur
+        password: refreshToken, // Stocker le refresh token dans le champ password
+        name: 'Refresh Token', // Optionnel : un nom descriptif
+      });
+
+      // Sauvegarder les informations dans le CMS
+      await navigator.credentials.store(credential);
+      console.log('Refresh token stocké avec succès dans le CMS.');
+    } catch (error) {
+      console.error('Erreur lors du stockage du refresh token :', error);
+    }
+  } else {
+    console.error('Credential Management API non supportée par ce navigateur.');
+  }
+}
+```
+
+#### **b) Récupérer le refresh token**
+Pour récupérer le refresh token depuis le CMS, utilisez la méthode `navigator.credentials.get()`.
+
+```javascript
+async function getRefreshToken() {
+  if ('credentials' in navigator) {
+    try {
+      const credential = await navigator.credentials.get({
+        password: true, // Demander un PasswordCredential
+      });
+
+      if (credential) {
+        const refreshToken = credential.password; // Récupérer le refresh token
+        console.log('Refresh token récupéré avec succès :', refreshToken);
+        return refreshToken;
+      } else {
+        console.log('Aucun refresh token trouvé dans le CMS.');
+        return null;
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération du refresh token :', error);
+      return null;
+    }
+  } else {
+    console.error('Credential Management API non supportée par ce navigateur.');
+    return null;
+  }
+}
+```
+
+---
+
+### **3. Utilisation avec OAuth 2.0**
+Lors de l'authentification :  
+- Après avoir reçu le **refresh token** depuis l'API d'authentification (via OAuth 2.0), appelez `storeRefreshToken(refreshToken)` pour le stocker dans le CMS.
+- Avant d'effectuer une requête nécessitant un refresh token, appelez `getRefreshToken()` pour récupérer le token.
+
+---
+
+### **4. Sécurité**
+- **HTTPS obligatoire** : La **Credential Management API** ne fonctionne que sur des connexions sécurisées.
+- **Accessibilité contrôlée** : Seules les pages du même domaine peuvent accéder aux informations stockées.
+- **Ne pas utiliser pour les tokens sensibles à court terme** : Le CMS est conçu pour des données persistantes. Pour des tokens à court terme (access tokens), privilégiez le stockage en mémoire ou via des cookies sécurisés.
+
+---
+
+### **5. Limites**
+- Le CMS n’est pas conçu spécifiquement pour le stockage de tokens (il est plutôt destiné aux identifiants utilisateur). Pour une gestion dédiée des tokens, envisagez des alternatives comme **IndexedDB**, **Secure Cookies**, ou **Local Storage** (avec des précautions supplémentaires).
+- La disponibilité varie selon les navigateurs (certains peuvent restreindre ou désactiver le CMS en fonction des politiques de sécurité).
+
+---
+
+### **6. Exemple d'intégration complet**
+
+```javascript
+async function authenticateUser(refreshToken) {
+  // Sauvegarder le refresh token dans le CMS
+  await storeRefreshToken(refreshToken);
+
+  // Récupérer le refresh token avant de rafraîchir un access token
+  const token = await getRefreshToken();
+  if (token) {
+    console.log('Utilisation du refresh token pour obtenir un nouvel access token.');
+    // Appeler votre API pour rafraîchir l'access token
+  } else {
+    console.log('L’utilisateur doit se reconnecter.');
+  }
+}
+```
+
+---
+
+En résumé, la **Credential Management API** peut être utilisée pour stocker un **refresh token** dans un environnement sécurisé. Cependant, évaluez si cette méthode est appropriée pour vos besoins, surtout en termes de compatibilité et de sécurité. Pour des données extrêmement sensibles, des mécanismes comme des cookies sécurisés ou IndexedDB chiffrés pourraient être plus adaptés.
