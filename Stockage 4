@@ -1,0 +1,174 @@
+Oui, il existe d'autres mécanismes de sécurisation proches de PBKDF2, qui ne nécessitent pas que l'utilisateur saisisse un mot de passe ou une phrase secrète, mais qui garantissent tout de même une bonne sécurité. Ces mécanismes reposent généralement sur l'utilisation d'éléments spécifiques au périphérique ou au navigateur pour dériver une clé cryptographique.
+
+### Alternatives sans saisie d’un mot de passe par l'utilisateur
+
+#### 1. **Utilisation d'une clé stockée localement avec `CryptoKey`**
+Vous pouvez générer une clé AES sécurisée et la stocker directement dans le navigateur avec **IndexedDB** ou le **Key Storage API**. La clé n'est pas visible par l'utilisateur mais est utilisée pour chiffrer et déchiffrer les tokens.
+
+##### Exemple :
+```javascript
+// Génération et stockage d'une clé AES
+async function generateAndStoreKey() {
+    const key = await crypto.subtle.generateKey(
+        { name: 'AES-GCM', length: 256 },
+        true,
+        ['encrypt', 'decrypt']
+    );
+
+    // Stockage dans IndexedDB
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction('tokens', 'readwrite');
+        const store = transaction.objectStore('tokens');
+        store.put({ id: 'encryptionKey', key });
+        transaction.oncomplete = () => resolve(true);
+        transaction.onerror = (event) => reject(event.target.error);
+    });
+}
+
+// Récupération de la clé AES
+async function getStoredKey() {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction('tokens', 'readonly');
+        const store = transaction.objectStore('tokens');
+        const request = store.get('encryptionKey');
+
+        request.onsuccess = () => resolve(request.result.key);
+        request.onerror = (event) => reject(event.target.error);
+    });
+}
+```
+
+#### 2. **Web Crypto + Identifiant Unique du Périphérique**
+Au lieu d'une clé générée aléatoirement, vous pouvez dériver une clé à partir d’un identifiant unique du périphérique, comme un identifiant généré lors de l’installation initiale.
+
+##### Exemple :
+1. **Générer un identifiant unique au premier lancement** :
+   ```javascript
+   function generateDeviceIdentifier() {
+       return crypto.randomUUID();
+   }
+   ```
+
+2. **Stocker cet identifiant dans `localStorage` ou `IndexedDB`** :
+   ```javascript
+   localStorage.setItem('deviceIdentifier', generateDeviceIdentifier());
+   ```
+
+3. **Dériver une clé depuis cet identifiant** :
+   ```javascript
+   async function deriveKeyFromDeviceIdentifier(identifier) {
+       const encoder = new TextEncoder();
+       const keyMaterial = await crypto.subtle.importKey(
+           'raw',
+           encoder.encode(identifier),
+           { name: 'PBKDF2' },
+           false,
+           ['deriveKey']
+       );
+
+       return await crypto.subtle.deriveKey(
+           {
+               name: 'PBKDF2',
+               salt: encoder.encode('static-salt-value'),
+               iterations: 100000,
+               hash: 'SHA-256',
+           },
+           keyMaterial,
+           { name: 'AES-GCM', length: 256 },
+           true,
+           ['encrypt', 'decrypt']
+       );
+   }
+   ```
+
+#### 3. **Encrypted Storage API (Futur standard)**
+L’**Encrypted Storage API** est une nouvelle API en cours de normalisation. Elle permet de stocker des données cryptées par le navigateur en utilisant des clés propres au matériel ou au navigateur.
+
+Avantages :
+- Transparent pour l’utilisateur.
+- Sécurisé et isolé pour chaque site web.
+
+---
+
+### Comparaison des Méthodes
+
+| **Méthode**                           | **Avantages**                                                                                              | **Inconvénients**                                                                 |
+|---------------------------------------|----------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
+| PBKDF2 avec phrase secrète utilisateur | Très sécurisé, dépend de l'utilisateur.                                                                  | Requiert une saisie manuelle, peut gêner l'expérience utilisateur.               |
+| Clé AES stockée localement             | Automatique, pas de saisie utilisateur.                                                                  | Vulnérable si un attaquant accède au stockage local.                             |
+| Identifiant unique dérivé             | Automatique, peut être dérivé dynamiquement à chaque fois.                                               | Risque de perte si l’identifiant est supprimé ou réinitialisé.                   |
+| Encrypted Storage API                 | Transparent et sécurisé par le navigateur (lié au matériel ou à l'installation).                        | Pas encore disponible dans tous les navigateurs.                                 |
+
+---
+
+### Exemple Simplifié : Identifiant Unique et Dérivation Automatique
+Voici un flux complet pour stocker et utiliser un refresh token sans intervention utilisateur :
+
+#### Stockage :
+```javascript
+async function storeRefreshToken(token) {
+    let deviceIdentifier = localStorage.getItem('deviceIdentifier');
+    if (!deviceIdentifier) {
+        deviceIdentifier = generateDeviceIdentifier();
+        localStorage.setItem('deviceIdentifier', deviceIdentifier);
+    }
+
+    const key = await deriveKeyFromDeviceIdentifier(deviceIdentifier);
+
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encryptedData = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv },
+        key,
+        new TextEncoder().encode(token)
+    );
+
+    // Sauvegarde dans IndexedDB
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction('tokens', 'readwrite');
+        const store = transaction.objectStore('tokens');
+        store.put({ id: 'refreshToken', encryptedData, iv });
+        transaction.oncomplete = () => resolve(true);
+        transaction.onerror = (event) => reject(event.target.error);
+    });
+}
+```
+
+#### Récupération :
+```javascript
+async function getRefreshToken() {
+    const deviceIdentifier = localStorage.getItem('deviceIdentifier');
+    if (!deviceIdentifier) {
+        throw new Error('Device identifier manquant.');
+    }
+
+    const key = await deriveKeyFromDeviceIdentifier(deviceIdentifier);
+
+    const db = await openDatabase();
+    const encryptedRecord = await new Promise((resolve, reject) => {
+        const transaction = db.transaction('tokens', 'readonly');
+        const store = transaction.objectStore('tokens');
+        const request = store.get('refreshToken');
+
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = (event) => reject(event.target.error);
+    });
+
+    const { encryptedData, iv } = encryptedRecord;
+    const decryptedData = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv },
+        key,
+        encryptedData
+    );
+
+    return new TextDecoder().decode(decryptedData);
+}
+```
+
+---
+
+### Conclusion
+
+Les alternatives comme la **clé stockée localement**, la **dérivation à partir d'un identifiant unique**, ou l'**Encrypted Storage API** permettent d'éviter les interactions avec l'utilisateur tout en garantissant une bonne sécurité. Cependant, elles sont adaptées à des scénarios où la sécurité du périphérique local est suffisante et où l'expérience utilisateur prime.
