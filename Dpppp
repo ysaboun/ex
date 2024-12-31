@@ -1,0 +1,22 @@
+**DPOP (Demonstration of Proof of Possession)** est une extension de la norme **OAuth 2.0** qui vise à renforcer la sécurité des jetons d'authentification et à prévenir leur usage frauduleux, notamment dans des attaques de type "replay" (où un jeton volé peut être réutilisé pour accéder à un service).
+
+### **Concept principal :**
+DPOP introduit une **preuve cryptographique** que l’entité (par exemple, un utilisateur ou un service) possède un jeton valide au moment de l'envoi d'une requête API. Cette preuve est utilisée pour garantir que la requête envoyée à une API provient bien de celui qui possède le jeton, réduisant ainsi les risques de détournement.
+
+### **Comment ça fonctionne ?**
+1. **Authentification initiale :** L'utilisateur ou l'application obtient un jeton d'accès OAuth 2.0, comme d'habitude.
+2. **Envoi de la requête avec DPOP :** Au lieu d'envoyer simplement le jeton d'accès, l'entité prouve qu'elle détient bien ce jeton en signant cryptographiquement la requête avec une clé privée, associée au jeton.
+3. **Vérification côté serveur :** L'API vérifie cette signature en utilisant une clé publique associée au jeton d'accès, et confirme que la requête provient bien de celui qui détient le jeton et n'a pas été manipulée ou répétée (attaque de relecture).
+
+### **Avantages de DPOP :**
+1. **Sécurité accrue :** Empêche l'utilisation de jetons volés, car chaque requête doit être signée spécifiquement avec la clé privée du détenteur du jeton, rendant les attaques de "replay" inefficaces.
+2. **Réduction des risques de détournement de session :** Même si un jeton est intercepté, il ne peut pas être utilisé à moins que le pirate ne dispose également de la clé privée associée.
+3. **Authentification améliorée des API :** Idéal pour sécuriser les appels API entre services ou applications, notamment dans les architectures modernes basées sur microservices.
+
+### **Cas d'usage :**
+- **Applications mobiles ou Web** : Pour sécuriser les appels API entre un client et un serveur, en garantissant que les jetons d'authentification ne peuvent pas être réutilisés sans preuve de possession.
+- **Services interconnectés** : Dans des écosystèmes avec plusieurs services ou API, où chaque service doit prouver qu'il détient bien les jetons d'accès avant de pouvoir interagir.
+
+---
+
+**En résumé**, DPOP est une technologie de sécurité qui renforce l'authentification OAuth en empêchant l'utilisation frauduleuse de jetons d'accès via des attaques de replay. Elle est particulièrement utile dans les architectures distribuées ou lors de l'authentification entre services.
