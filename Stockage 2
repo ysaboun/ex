@@ -1,0 +1,160 @@
+### Détails Techniques et Fonctionnels de la Dérivation de Clé avec PBKDF2
+
+La méthode **PBKDF2 (Password-Based Key Derivation Function 2)** est une technique standard pour dériver une clé cryptographique sécurisée à partir d'un mot de passe ou d'une autre entrée faible (par exemple, un token ou une phrase secrète). Elle améliore la sécurité en introduisant un **sel cryptographique** et un grand nombre d'itérations, rendant les attaques par force brute plus coûteuses.
+
+---
+
+### Étapes Principales avec PBKDF2
+1. **Génération d'un sel (salt)** : Un sel unique est généré pour chaque dérivation. Cela empêche les attaques par table arc-en-ciel (rainbow table).
+2. **Dérivation de la clé** : Une clé est dérivée en utilisant une fonction de hachage (comme SHA-256), un sel, et un nombre d'itérations.
+3. **Utilisation de la clé** : La clé dérivée est utilisée pour chiffrer ou déchiffrer les données.
+
+---
+
+### Fonctionnement de PBKDF2
+
+- **Entrées** :
+  - Mot de passe (ou secret).
+  - Sel (un vecteur unique et aléatoire).
+  - Nombre d'itérations (plus c'est élevé, plus c'est sécurisé mais plus lent).
+  - Longueur souhaitée pour la clé dérivée.
+  - Fonction de hachage (généralement SHA-256 ou SHA-512).
+
+- **Sortie** :
+  - Une clé cryptographique sécurisée.
+
+---
+
+### Exemple avec l'API Web Crypto
+
+Voici comment utiliser PBKDF2 pour dériver une clé sécurisée dans le navigateur avec l'API Web Crypto :
+
+#### 1. Génération d'un sel
+```javascript
+function generateSalt() {
+    return crypto.getRandomValues(new Uint8Array(16)); // 16 octets (128 bits)
+}
+```
+
+---
+
+#### 2. Dérivation d'une clé avec PBKDF2
+```javascript
+async function deriveKey(password, salt) {
+    // Encodage du mot de passe en bytes
+    const passwordKey = new TextEncoder().encode(password);
+
+    // Importation du mot de passe en tant que clé de base
+    const baseKey = await crypto.subtle.importKey(
+        'raw', // Clé brute
+        passwordKey,
+        { name: 'PBKDF2' },
+        false, // Non exportable
+        ['deriveKey']
+    );
+
+    // Dérivation de la clé
+    return await crypto.subtle.deriveKey(
+        {
+            name: 'PBKDF2',
+            salt: salt,
+            iterations: 100000, // 100 000 itérations
+            hash: 'SHA-256', // Algorithme de hachage
+        },
+        baseKey,
+        { name: 'AES-GCM', length: 256 }, // Algorithme et taille de la clé dérivée
+        true, // Exportable
+        ['encrypt', 'decrypt']
+    );
+}
+```
+
+---
+
+#### 3. Stockage d'un refresh token
+Voici un exemple combinant PBKDF2 et le stockage du token dans IndexedDB :
+
+```javascript
+async function storeRefreshTokenWithPBKDF2(password, token) {
+    const salt = generateSalt();
+    const key = await deriveKey(password, salt);
+
+    // Chiffrement du token
+    const iv = crypto.getRandomValues(new Uint8Array(12)); // Initialisation vector
+    const encryptedData = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv: iv },
+        key,
+        new TextEncoder().encode(token)
+    );
+
+    // Stockage dans IndexedDB
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction('tokens', 'readwrite');
+        const store = transaction.objectStore('tokens');
+        store.put({
+            id: 'refreshToken',
+            encryptedData: new Uint8Array(encryptedData),
+            salt: salt,
+            iv: iv,
+        });
+
+        transaction.oncomplete = () => resolve(true);
+        transaction.onerror = (event) => reject(event.target.error);
+    });
+}
+```
+
+---
+
+#### 4. Récupération et déchiffrement du token
+```javascript
+async function getRefreshTokenWithPBKDF2(password) {
+    const db = await openDatabase();
+
+    // Récupération des données
+    const encryptedRecord = await new Promise((resolve, reject) => {
+        const transaction = db.transaction('tokens', 'readonly');
+        const store = transaction.objectStore('tokens');
+        const request = store.get('refreshToken');
+
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = (event) => reject(event.target.error);
+    });
+
+    if (!encryptedRecord) throw new Error('Refresh token non trouvé.');
+
+    const { encryptedData, salt, iv } = encryptedRecord;
+
+    // Dérivation de la clé avec le même mot de passe et sel
+    const key = await deriveKey(password, salt);
+
+    // Déchiffrement
+    const decryptedData = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: iv },
+        key,
+        encryptedData
+    );
+
+    return new TextDecoder().decode(decryptedData);
+}
+```
+
+---
+
+### Résumé Technique
+
+1. **PBKDF2 pour la dérivation** :
+   - Il rend le mot de passe moins vulnérable aux attaques par force brute.
+   - Le sel empêche les attaques par table arc-en-ciel.
+   - Les itérations augmentent la difficulté des attaques, mais gardez un compromis entre sécurité et performance.
+
+2. **Sécurité du stockage** :
+   - Le token chiffré est stocké dans IndexedDB avec son sel et IV.
+   - La clé dérivée n'est pas stockée, seulement re-calculée à partir du mot de passe.
+
+3. **Fonctionnement global** :
+   - Lors du stockage, le mot de passe de l'utilisateur est utilisé pour générer une clé temporaire sécurisée via PBKDF2.
+   - Lors de la récupération, le même mot de passe et sel sont utilisés pour dériver la clé nécessaire pour déchiffrer le token.
+
+> **Remarque** : Il est important d'utiliser un mot de passe fort ou une phrase secrète pour garantir une sécurité maximale.
