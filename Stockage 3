@@ -1,0 +1,139 @@
+Voici un exemple montrant comment intégrer l'appel des fonctions de stockage et récupération sécurisée de refresh token avec PBKDF2 lors d'un processus d'authentification OAuth2 pour un utilisateur final. 
+
+---
+
+### Exemple Complet
+
+#### Étape 1 : Authentification et Obtention du Refresh Token
+
+Lorsqu'un utilisateur s'authentifie avec OAuth2 (via un formulaire ou une redirection vers un fournisseur OAuth2), le serveur retourne un **refresh token** que vous pouvez sécuriser.
+
+##### Code Exemple :
+```javascript
+async function handleOAuth2Authentication(authCode) {
+    // Étape 1 : Échanger le code d'autorisation pour un access token et un refresh token
+    const response = await fetch('https://api.oauth2-provider.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            grant_type: 'authorization_code',
+            code: authCode,
+            client_id: 'your-client-id',
+            client_secret: 'your-client-secret',
+            redirect_uri: 'your-redirect-uri',
+        }),
+    });
+
+    if (!response.ok) {
+        throw new Error('Échec de l\'authentification OAuth2');
+    }
+
+    const { access_token, refresh_token } = await response.json();
+
+    // Étape 2 : Demander un mot de passe ou une phrase secrète à l'utilisateur
+    const userPassword = prompt('Veuillez saisir une phrase secrète pour sécuriser vos données :');
+
+    if (!userPassword) {
+        throw new Error('La phrase secrète est requise.');
+    }
+
+    // Étape 3 : Stocker le refresh token de manière sécurisée
+    await storeRefreshTokenWithPBKDF2(userPassword, refresh_token);
+
+    // Étape 4 : Utiliser l'access token (ex. pour obtenir des données utilisateur)
+    console.log('Access Token:', access_token);
+    return access_token;
+}
+```
+
+---
+
+#### Étape 2 : Utilisation du Refresh Token pour Renouveler l'Access Token
+
+Lorsque l'access token expire, utilisez le refresh token stocké pour en obtenir un nouveau.
+
+##### Code Exemple :
+```javascript
+async function refreshAccessToken(password) {
+    // Étape 1 : Récupérer le refresh token sécurisé
+    const refreshToken = await getRefreshTokenWithPBKDF2(password);
+
+    // Étape 2 : Envoyer une requête pour renouveler l'access token
+    const response = await fetch('https://api.oauth2-provider.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
+            client_id: 'your-client-id',
+            client_secret: 'your-client-secret',
+        }),
+    });
+
+    if (!response.ok) {
+        throw new Error('Échec du renouvellement de l\'access token');
+    }
+
+    const { access_token } = await response.json();
+
+    // Étape 3 : Retourner le nouvel access token
+    console.log('Nouveau Access Token:', access_token);
+    return access_token;
+}
+```
+
+---
+
+### Scénario d'Utilisation
+
+Voici comment ces fonctions peuvent être utilisées dans un flux complet :
+
+1. **Authentification Initiale** :
+   - L'utilisateur s'authentifie via OAuth2 et fournit une phrase secrète pour sécuriser ses données.
+   - Le refresh token est stocké de manière sécurisée avec PBKDF2.
+
+   ```javascript
+   const authCode = 'code-obtenu-du-fournisseur-oauth2';
+   handleOAuth2Authentication(authCode)
+       .then(accessToken => {
+           console.log('Authentification réussie, access token reçu.');
+       })
+       .catch(err => {
+           console.error('Erreur lors de l\'authentification:', err.message);
+       });
+   ```
+
+2. **Renouvellement d'Access Token** :
+   - Lorsque l'access token expire, l'utilisateur est invité à entrer sa phrase secrète pour déchiffrer le refresh token.
+   - Un nouvel access token est généré.
+
+   ```javascript
+   const userPassword = prompt('Veuillez saisir votre phrase secrète :');
+   refreshAccessToken(userPassword)
+       .then(newAccessToken => {
+           console.log('Access token renouvelé avec succès.');
+       })
+       .catch(err => {
+           console.error('Erreur lors du renouvellement de l\'access token:', err.message);
+       });
+   ```
+
+---
+
+### Points Clés
+
+1. **Sécurisation avec PBKDF2** :
+   - Le refresh token est stocké de manière sécurisée en IndexedDB, protégé par une clé dérivée via PBKDF2.
+
+2. **Interaction avec l'Utilisateur** :
+   - Lors de l'authentification initiale, l'utilisateur doit fournir une phrase secrète pour sécuriser ses données.
+   - Cette phrase secrète est également nécessaire pour accéder au refresh token lors du renouvellement.
+
+3. **Flux OAuth2** :
+   - `grant_type=authorization_code` pour obtenir le refresh token et l'access token initial.
+   - `grant_type=refresh_token` pour renouveler l'access token.
+
+4. **Performance** :
+   - Le nombre d'itérations PBKDF2 (100 000 dans cet exemple) garantit une sécurité élevée tout en restant performant dans un navigateur moderne.
+
+> **Remarque** : Si l'utilisateur oublie sa phrase secrète, le refresh token devient inaccessible. Vous devrez réauthentifier l'utilisateur avec OAuth2.
