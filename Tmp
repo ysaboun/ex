@@ -1,0 +1,109 @@
+Pour stocker un token dans un **Trusted Web Module (TWM)** comme un TPM matériel ou une enclave logicielle, il faut utiliser des interfaces spécifiques à l'environnement d'exécution sécurisé. Les TPM matériels modernes peuvent être intégrés avec des solutions comme **WebAuthn**, **FIDO2**, ou des API spécifiques au matériel.
+
+Voici un exemple complet et simplifié pour stocker un token en utilisant une enclave sécurisée ou un TPM avec l'aide de **WebAuthn**.
+
+---
+
+### **1. Prérequis**
+- Navigateur compatible avec **WebAuthn**.
+- Appareil avec un TPM (ou module de sécurité compatible, comme une YubiKey).
+- HTTPS activé pour les communications.
+
+---
+
+### **2. Génération et stockage d'une clé sécurisée avec WebAuthn**
+Le TPM ou la clé sécurisée est utilisé pour générer une paire de clés (publique/privée). La clé privée reste dans l'environnement sécurisé, et la clé publique est utilisée pour la communication.
+
+#### Exemple d'implémentation en JavaScript :
+```javascript
+async function registerToken(token) {
+    // Encode the token (convert to a buffer)
+    const encoder = new TextEncoder();
+    const tokenBuffer = encoder.encode(token);
+
+    // WebAuthn: Génération d'une clé sécurisée
+    const credential = await navigator.credentials.create({
+        publicKey: {
+            rp: {
+                name: "Trusted App", // Nom de l'application
+            },
+            user: {
+                id: new Uint8Array(16), // Identifiant utilisateur (générer un unique ID par utilisateur)
+                name: "user@example.com",
+                displayName: "User Example",
+            },
+            pubKeyCredParams: [{ alg: -7, type: "public-key" }], // Algorithme ECDSA
+            challenge: crypto.getRandomValues(new Uint8Array(32)), // Défi aléatoire
+            authenticatorSelection: {
+                requireResidentKey: false,
+                userVerification: "preferred",
+            },
+            timeout: 60000,
+            attestation: "direct",
+        },
+    });
+
+    // La clé privée est maintenant stockée dans le TPM ou l'enclave
+    console.log("Credential created:", credential);
+
+    // Stocker la clé publique et l'ID d'authentification côté serveur pour une vérification future
+    const publicKey = credential.response.getPublicKey();
+    const credentialId = credential.rawId;
+
+    // Vous pouvez stocker les détails côté serveur ou les utiliser pour un usage local
+    return { publicKey, credentialId };
+}
+```
+
+---
+
+### **3. Utilisation du token avec WebAuthn (authentification)**
+Lorsqu'un utilisateur doit utiliser un token sécurisé, l'application demande au TPM d'effectuer une signature cryptographique.
+
+#### Exemple :
+```javascript
+async function authenticateToken() {
+    // Challenge pour valider l'authentification (fournit par le serveur)
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+
+    const assertion = await navigator.credentials.get({
+        publicKey: {
+            challenge: challenge,
+            allowCredentials: [
+                {
+                    id: savedCredentialId, // ID stocké lors de l'enregistrement
+                    type: "public-key",
+                },
+            ],
+            userVerification: "preferred",
+        },
+    });
+
+    // Vérification de la réponse
+    console.log("Assertion received:", assertion);
+
+    // Envoyer la signature au serveur pour vérification
+    const signature = assertion.response.signature;
+    return signature;
+}
+```
+
+---
+
+### **4. Communication avec le serveur**
+Pour gérer les interactions sécurisées :
+1. Envoyez la clé publique et l'identifiant d'authentification au serveur.
+2. Utilisez la clé privée stockée dans le TPM pour signer ou chiffrer les messages.
+3. Le serveur valide la signature avec la clé publique.
+
+---
+
+### **5. Avantages d'utiliser un TPM ou une enclave avec WebAuthn**
+- **Sécurité renforcée** : La clé privée ne quitte jamais l'environnement sécurisé.
+- **Anti-rejeu** : Les défis uniques empêchent les attaques de type replay.
+- **Interopérabilité** : Compatible avec les normes WebAuthn/FIDO2 sur les appareils modernes.
+
+---
+
+### **Conclusion**
+En utilisant **WebAuthn** et un TPM matériel (ou logiciel sécurisé), vous pouvez stocker et manipuler des tokens de manière sécurisée sans exposer les données sensibles directement dans le navigateur. Ce modèle est particulièrement adapté aux applications nécessitant une sécurité élevée, comme les solutions d'authentification forte.
