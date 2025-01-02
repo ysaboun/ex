@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JWT Decoder</title>
+    <style>
+        /* General Styling */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            color: #2c3e50;
+        }
+
+        label {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            display: block;
+            color: #555;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            resize: none;
+            padding: 0.75rem;
+            font-size: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            box-sizing: border-box;
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        button {
+            flex: 1;
+            padding: 0.75rem;
+            font-size: 1rem;
+            color: white;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .output-section {
+            margin-top: 2rem;
+        }
+
+        .output-section h2 {
+            font-size: 1.5rem;
+            color: #444;
+            margin-bottom: 1rem;
+        }
+
+        .decoded-output {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            font-family: 'Courier New', monospace;
+            overflow: auto; /* Enable scroll */
+            max-height: 300px; /* Set maximum height for scrolling */
+        }
+
+        .decoded-output pre {
+            margin: 0;
+            font-size: 0.9rem;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>JWT Decoder</h1>
+    
+    <label for="jwtInput">Paste your JWT here:</label>
+    <textarea id="jwtInput" placeholder="Enter your JWT"></textarea>
+
+    <div class="button-group">
+        <button id="decodeBtn">Decode JWT</button>
+        <button id="copyDecodedBtn">Copy Decoded</button>
+    </div>
+
+    <div class="output-section">
+        <h2>Decoded JWT</h2>
+        <div class="decoded-output">
+            <h3>Header:</h3>
+            <pre id="decodedHeader">---</pre>
+            <h3>Payload:</h3>
+            <pre id="decodedPayload">---</pre>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Decode JWT
+    function decodeJWT(jwt) {
+        try {
+            const parts = jwt.split(".");
+            if (parts.length !== 3) {
+                throw new Error("Invalid JWT format");
+            }
+
+            const base64UrlDecode = (base64Url) => {
+                const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+                const decodedString = atob(base64);
+                return JSON.parse(decodedString);
+            };
+
+            const header = base64UrlDecode(parts[0]);
+            const payload = base64UrlDecode(parts[1]);
+
+            return { header, payload };
+        } catch (error) {
+            throw new Error("Failed to decode JWT: " + error.message);
+        }
+    }
+
+    // Button handlers
+    document.getElementById("decodeBtn").addEventListener("click", () => {
+        const jwtInput = document.getElementById("jwtInput").value.trim();
+        const decodedHeader = document.getElementById("decodedHeader");
+        const decodedPayload = document.getElementById("decodedPayload");
+
+        try {
+            const { header, payload } = decodeJWT(jwtInput);
+            decodedHeader.textContent = JSON.stringify(header, null, 2);
+            decodedPayload.textContent = JSON.stringify(payload, null, 2);
+        } catch (error) {
+            alert(error.message);
+            decodedHeader.textContent = "---";
+            decodedPayload.textContent = "---";
+        }
+    });
+
+    document.getElementById("copyDecodedBtn").addEventListener("click", () => {
+        const header = document.getElementById("decodedHeader").textContent;
+        const payload = document.getElementById("decodedPayload").textContent;
+
+        const decodedContent = `Header:\n${header}\n\nPayload:\n${payload}`;
+        navigator.clipboard.writeText(decodedContent)
+            .then(() => alert("Decoded JWT copied to clipboard!"))
+            .catch((err) => alert("Failed to copy: " + err));
+    });
+</script>
+
+</body>
+</html>
