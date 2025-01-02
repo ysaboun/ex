@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JWT Decoder & Verifier</title>
+    <style>
+        /* General Styling */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            color: #2c3e50;
+        }
+
+        label {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            display: block;
+            color: #555;
+        }
+
+        textarea, select, input {
+            width: 100%;
+            padding: 0.75rem;
+            font-size: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            box-sizing: border-box;
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        button {
+            flex: 1;
+            padding: 0.75rem;
+            font-size: 1rem;
+            color: white;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .output-section {
+            margin-top: 2rem;
+        }
+
+        .decoded-output {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            font-family: 'Courier New', monospace;
+            overflow: auto;
+            max-height: 300px;
+        }
+
+        .decoded-output pre {
+            margin: 0;
+            font-size: 0.9rem;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>JWT Decoder & Verifier</h1>
+    
+    <label for="jwtInput">Paste your JWT here:</label>
+    <textarea id="jwtInput" placeholder="Enter your JWT"></textarea>
+
+    <label for="publicKeyInput">Paste your Public Key here:</label>
+    <textarea id="publicKeyInput" placeholder="Enter your Public Key"></textarea>
+
+    <label for="jwksUrlInput">Paste your JWKS URL here:</label>
+    <input type="text" id="jwksUrlInput" placeholder="Enter your JWKS URL">
+
+    <label for="algorithm">Select Algorithm:</label>
+    <select id="algorithm">
+        <option value="ES256">ES256</option>
+        <option value="RS256">RS256</option>
+    </select>
+
+    <div class="button-group">
+        <button id="decodeBtn">Decode JWT</button>
+        <button id="verifySignaturePublicKeyBtn">Verify Signature (Public Key)</button>
+        <button id="verifySignatureJwksBtn">Verify Signature (JWKS URL)</button>
+    </div>
+
+    <div class="output-section">
+        <h2>Decoded JWT</h2>
+        <div class="decoded-output">
+            <h3>Header:</h3>
+            <pre id="decodedHeader">---</pre>
+            <h3>Payload:</h3>
+            <pre id="decodedPayload">---</pre>
+            <h3>Verification Status:</h3>
+            <pre id="verificationStatus">---</pre>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Function to decode the JWT
+    function decodeJWT(jwt) {
+        const parts = jwt.split(".");
+        if (parts.length !== 3) {
+            throw new Error("Invalid JWT format");
+        }
+
+        const [headerBase64, payloadBase64] = parts;
+
+        const header = JSON.parse(atob(headerBase64.replace(/-/g, "+").replace(/_/g, "/")));
+        const payload = JSON.parse(atob(payloadBase64.replace(/-/g, "+").replace(/_/g, "/")));
+
+        return { header, payload };
+    }
+
+    // Function to verify the JWT signature using a public key
+    async function verifySignatureWithPublicKey(jwt, publicKey, algorithm) {
+        const parts = jwt.split(".");
+        const [headerBase64, payloadBase64, signatureBase64] = parts;
+        const header = JSON.parse(atob(headerBase64.replace(/-/g, "+").replace(/_/g, "/")));
+
+        const keyParams = algorithm === "ES256" 
+            ? { name: "ECDSA", namedCurve: "P-256" } 
+            : { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" };
+
+        const key = await crypto.subtle.importKey(
+            "spki",
+            decodePEM(publicKey),
+            keyParams,
+            false,
+            ["verify"]
+        );
+
+        const encoder = new TextEncoder();
+        const data = encoder.encode(`${headerBase64}.${payloadBase64}`);
+        const signature = atob(signatureBase64.replace(/-/g, "+").replace(/_/g, "/"));
+
+        const isValid = await crypto.subtle.verify(
+            algorithm === "ES256" ? "ECDSA" : "RSASSA-PKCS1-v1_5",
+            key,
+            new Uint8Array(signature.split("").map(c => c.charCodeAt(0))),
+            data
+        );
+
+        return isValid;
+    }
+
+    // Decode PEM format key to ArrayBuffer
+    function decodePEM(pem) {
+        const b64 = pem
+            .replace(/-----(BEGIN|END) PUBLIC KEY-----/g, "")
+            .replace(/\s+/g, "");
+        const binary = atob(b64);
+        const array = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            array[i] = binary.charCodeAt(i);
+        }
+        return array.buffer;
+    }
+
+    // Decode JWT button click handler
+    document.getElementById("decodeBtn").addEventListener("click", () => {
+        const jwtInput = document.getElementById("jwtInput").value.trim();
+
+        try {
+            const { header, payload } = decodeJWT(jwtInput);
+            document.getElementById("decodedHeader").textContent = JSON.stringify(header, null, 2);
+            document.getElementById("decodedPayload").textContent = JSON.stringify(payload, null, 2);
+            document.getElementById("verificationStatus").textContent = "JWT decoded successfully.";
+        } catch (error) {
+            document.getElementById("decodedHeader").textContent = "---";
+            document.getElementById("decodedPayload").textContent = "---";
+            document.getElementById("verificationStatus").textContent = "Error decoding JWT ❌";
+        }
+    });
+
+    // Verify Signature with Public Key button click handler
+    document.getElementById("verifySignaturePublicKeyBtn").addEventListener("click", async () => {
+        const jwtInput = document.getElementById("jwtInput").value.trim();
+        const publicKeyInput = document.getElementById("publicKeyInput").value.trim();
+        const algorithm = document.getElementById("algorithm").value;
+
+        try {
+            const isValid = await verifySignatureWithPublicKey(jwtInput, publicKeyInput, algorithm);
+            document.getElementById("verificationStatus").textContent = isValid ? "Valid Signature ✅" : "Invalid Signature ❌";
+        } catch (error) {
+            document.getElementById("verificationStatus").textContent = "Signature verification failed ❌";
+        }
+    });
+
+    // Function to get key from JWKS URL and verify signature
+    async function getJwksKey(jwksUrl, kid) {
+        try {
+            const response = await fetch(jwksUrl);
+            const jwks = await response.json();
+
+            const key = jwks.keys.find(k => k.kid === kid);
+            if (!key) throw new Error("Key not found in JWKS");
+
+            return key;
+        } catch (error) {
+            throw new Error("Error fetching JWKS: " + error.message);
+        }
+    }
+
+    // Verify Signature with JWKS URL button click handler
+    document.getElementById("verifySignatureJwksBtn").addEventListener("click", async () => {
+        const jwtInput = document.getElementById("jwtInput").value.trim();
+        const jwksUrlInput = document.getElementById("jwksUrlInput").value.trim();
+        const algorithm = document.getElementById("algorithm").value;
+
+        const parts = jwtInput.split(".");
+        const [headerBase64] = parts;
+        const header = JSON.parse(atob(headerBase64.replace(/-/g, "+").replace(/_/g, "/")));
+        const kid = header.kid;
+
+        try {
+            const key = await getJwksKey(jwksUrlInput, kid);
+
+            // Import public key from JWKS
+            const publicKey = `-----BEGIN PUBLIC KEY-----\n${key.x5c[0]}\n-----END PUBLIC KEY-----`;
+
+            const isValid = await verifySignatureWithPublicKey(jwtInput, publicKey, algorithm);
+            document.getElementById("verificationStatus").textContent = isValid ? "Valid Signature ✅" : "Invalid Signature ❌";
+        } catch (error) {
+            document.getElementById("verificationStatus").textContent = "Error verifying signature ❌";
+        }
+    });
+</script>
+
+</body>
+</html>
