@@ -1,0 +1,75 @@
+document.getElementById("verifySignatureJwksBtn").addEventListener("click", async () => {
+    const jwtInput = document.getElementById("jwtInput").value.trim();
+    const jwksUrlInput = document.getElementById("jwksUrlInput").value.trim();
+    const parts = jwtInput.split(".");
+    if (parts.length !== 3) {
+        document.getElementById("verificationStatus").textContent = "Invalid JWT format ❌";
+        return;
+    }
+
+    const [headerBase64, payloadBase64, signatureBase64] = parts;
+    const header = JSON.parse(atob(headerBase64.replace(/-/g, "+").replace(/_/g, "/")));
+    const kid = header.kid;
+
+    try {
+        const response = await fetch(jwksUrlInput);
+        const jwks = await response.json();
+        const publicKey = await getPublicKeyFromJwks(jwks, kid);
+
+        const encoder = new TextEncoder();
+        const data = encoder.encode(`${headerBase64}.${payloadBase64}`);
+        const signature = base64UrlToArrayBuffer(signatureBase64);
+
+        const isValid = await crypto.subtle.verify(
+            "RSASSA-PKCS1-v1_5",
+            publicKey,
+            signature,
+            data
+        );
+
+        document.getElementById("verificationStatus").textContent = isValid ? "Valid Signature ✅" : "Invalid Signature ❌";
+    } catch (error) {
+        document.getElementById("verificationStatus").textContent = `Error verifying signature ❌: ${error.message}`;
+    }
+});
+
+
+async function getPublicKeyFromJwks(jwks, kid) {
+    const key = jwks.keys.find(k => k.kid === kid);
+    if (!key || key.kty !== "RSA" || !key.n || !key.e || key.use !== "sig") {
+        throw new Error("Invalid or unsupported key in JWKS");
+    }
+
+    // Convert 'n' and 'e' to ArrayBuffers
+    const modulus = base64UrlToArrayBuffer(key.n);
+    const exponent = base64UrlToArrayBuffer(key.e);
+
+    // Construct a public key using the RSA key parameters
+    return crypto.subtle.importKey(
+        "jwk",
+        {
+            kty: "RSA",
+            n: key.n,
+            e: key.e,
+            alg: "RS256",
+            ext: true,
+        },
+        {
+            name: "RSASSA-PKCS1-v1_5",
+            hash: { name: "SHA-256" },
+        },
+        false,
+        ["verify"]
+    );
+}
+
+function base64UrlToArrayBuffer(base64UrlString) {
+    const base64 = base64UrlString.replace(/-/g, "+").replace(/_/g, "/");
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
+}
