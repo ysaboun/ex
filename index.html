@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DPoP Token Generator</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            margin: 0;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        label {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: #555;
+        }
+
+        input, select, textarea, button {
+            width: 100%;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: space-between;
+        }
+
+        .button-group button {
+            flex: 1;
+        }
+
+        textarea {
+            height: 150px;
+            resize: none;
+        }
+
+        .output-container {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 1rem;
+        }
+
+        .decoded-output {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            font-family: 'Courier New', monospace;
+        }
+
+        .decoded-output pre {
+            margin: 0;
+            font-size: 0.9rem;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .section-title {
+            font-size: 1.4rem;
+            color: #444;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>DPoP Token Generator</h1>
+
+    <!-- Token Generation Form -->
+    <label for="algorithm">Algorithm:</label>
+    <select id="algorithm">
+        <option value="ES256">ES256</option>
+        <option value="RS256">RS256</option>
+    </select>
+
+    <label for="httpMethod">HTTP Method:</label>
+    <input id="httpMethod" type="text" placeholder="Ex: POST" required>
+
+    <label for="httpUrl">HTTP URL:</label>
+    <input id="httpUrl" type="url" placeholder="Ex: https://api.example.com/resource" required>
+
+    <button id="generateBtn">Generate DPoP Token</button>
+
+    <!-- Generated Token -->
+    <h2 class="section-title">Generated Token</h2>
+    <textarea id="output" readonly></textarea>
+
+    <!-- Button Group -->
+    <div class="button-group">
+        <button id="decodeBtn">Decode Generated Token</button>
+        <button id="copyBtn" class="copy-btn">Copy to Decode JWT</button>
+    </div>
+
+    <!-- Decoded JWT Output -->
+    <div class="output-container">
+        <h2 class="section-title">Decoded JWT</h2>
+        <div class="decoded-output">
+            <h3>Decoded Header</h3>
+            <pre id="decodedHeader">---</pre>
+            <h3>Decoded Payload</h3>
+            <pre id="decodedPayload">---</pre>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Génère une paire de clés selon l'algorithme choisi
+    async function generateKeyPair(algorithm) {
+        if (algorithm === "ES256") {
+            return await crypto.subtle.generateKey(
+                {
+                    name: "ECDSA",
+                    namedCurve: "P-256",
+                },
+                true,
+                ["sign", "verify"]
+            );
+        } else if (algorithm === "RS256") {
+            return await crypto.subtle.generateKey(
+                {
+                    name: "RSASSA-PKCS1-v1_5",
+                    modulusLength: 2048,
+                    publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+                    hash: { name: "SHA-256" },
+                },
+                true,
+                ["sign", "verify"]
+            );
+        }
+        throw new Error("Unsupported algorithm");
+    }
+
+    // Exporte une clé publique en JWK
+    async function exportPublicKeyToJWK(publicKey, algorithm) {
+        const jwk = await crypto.subtle.exportKey("jwk", publicKey);
+        return algorithm === "ES256"
+            ? { ...jwk, alg: "ES256", use: "sig", kid: crypto.randomUUID() }
+            : { ...jwk, alg: "RS256", use: "sig", kid: crypto.randomUUID() };
+    }
+
+    // Génère un token DPoP
+    async function createDPoPToken(privateKey, jwk, httpMethod, httpUrl, algorithm) {
+        const header = {
+            alg: algorithm,
+            typ: "dpop+jwt",
+            jwk,
+        };
+        const payload = {
+            htm: httpMethod.toUpperCase(),
+            htu: httpUrl,
+            jti: crypto.randomUUID(),
+            iat: Math.floor(Date.now() / 1000),
+        };
+
+        const base64UrlEncode = (obj) =>
+            btoa(JSON.stringify(obj))
+                .replace(/\+/g, "-")
+                .replace(/\//g, "_")
+                .replace(/=+$/, "");
+
+        const headerBase64 = base64UrlEncode(header);
+        const payloadBase64 = base64UrlEncode(payload);
+        const signingInput = `${headerBase64}.${payloadBase64}`;
+
+        const signature = await crypto.subtle.sign(
+            {
+                name: algorithm === "ES256" ? "ECDSA" : "RSASSA-PKCS1-v1_5",
+                ...(algorithm === "ES256" && { hash: { name: "SHA-256" } }),
+            },
+            privateKey,
+            new TextEncoder().encode(signingInput)
+        );
+
+        const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
+            .replace(/\+/g, "-")
+            .replace(/\//g, "_")
+            .replace(/=+$/, "");
+
+        return `${signingInput}.${signatureBase64}`;
+    }
+
+    // Décoder un JWT
+    function decodeJWT(jwt) {
+        try {
+            const parts = jwt.split(".");
+            if (parts.length !== 3) {
+                throw new Error("Invalid JWT format");
+            }
+
+            const base64UrlDecode = (base64Url) => {
+                const base64 = base64Url
+                    .replace(/-/g, "+")
+                    .replace(/_/g, "/");
+                return JSON.parse(atob(base64));
+            };
+
+            const header = base64UrlDecode(parts[0]);
+            const payload = base64UrlDecode(parts[1]);
+
+            return { header, payload };
+        } catch (error) {
+            throw new Error("Failed to decode JWT: " + error.message);
+        }
+    }
+
+    // Gestionnaire du bouton "Generate"
+    document.getElementById("generateBtn").addEventListener("click", async () => {
+        const algorithm = document.getElementById("algorithm").value;
+        const httpMethod = document.getElementById("httpMethod").value.trim();
+        const httpUrl = document.getElementById("httpUrl").value.trim();
+        const output = document.getElementById("output");
+
+        if (!httpMethod || !httpUrl) {
+            alert("Please provide HTTP method and URL.");
+            return;
+        }
+
+        output.value = "Generating DPoP token...";
+
+        try {
+            const keyPair = await generateKeyPair(algorithm);
+            const jwk = await exportPublicKeyToJWK(keyPair.publicKey, algorithm);
+            const dpopToken = await createDPoPToken(
+                keyPair.privateKey,
+                jwk,
+                httpMethod,
+                httpUrl,
+                algorithm
+            );
+
+            output.value = dpopToken;
+        } catch (error) {
+            output.value = `Error: ${error.message}`;
+        }
+    });
+
+    // Gestionnaire du bouton "Decode"
+    document.getElementById("decodeBtn").addEventListener("click", () => {
+        const generatedToken = document.getElementById("output").value.trim();
+        const decodedHeader = document.getElementById("decodedHeader");
+        const decodedPayload = document.getElementById("decodedPayload");
+
+        try {
+            const { header, payload } = decodeJWT(generatedToken);
+            decodedHeader.textContent = JSON.stringify(header, null, 2);
+            decodedPayload.textContent = JSON.stringify(payload, null, 2);
+        } catch (error) {
+            decodedHeader.textContent = "---";
+            decodedPayload.textContent = "---";
+            alert("Failed to decode JWT: " + error.message);
+        }
+    });
+
+    // Gestionnaire du bouton "Copy to Decode JWT"
+    document.getElementById("copyBtn").addEventListener("click", () => {
+        const generatedToken = document.getElementById("output").value;
+        navigator.clipboard.writeText(generatedToken)
+            .then(() => alert("Token copied to clipboard!"))
+            .catch(err => alert("Failed to copy token: " + err));
+    });
+</script>
+
+</body>
+</html>
