@@ -1,0 +1,70 @@
+Pour intégrer une page HTML dans Confluence et permettre l'ouverture d'une autre page HTML dans un nouvel onglet lors d'un clic, voici les étapes détaillées :  
+
+---
+
+### 1. **Créer la page HTML principale**  
+Concevez une page HTML contenant un lien ou un bouton pour ouvrir une autre page. Voici un exemple simple :  
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page principale</title>
+</head>
+<body>
+    <h1>Bienvenue sur la page principale</h1>
+    <a href="page2.html" target="_blank">Ouvrir la deuxième page</a>
+</body>
+</html>
+```
+
+### 2. **Créer la page HTML secondaire**  
+Concevez une deuxième page HTML qui sera ouverte dans un nouvel onglet. Exemple :  
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deuxième page</title>
+</head>
+<body>
+    <h1>Voici la deuxième page</h1>
+    <p>Cette page s'est ouverte dans un nouvel onglet.</p>
+</body>
+</html>
+```
+
+### 3. **Héberger les fichiers HTML**  
+Confluence ne permet pas directement d'héberger des fichiers HTML pour les exécuter. Voici les alternatives :
+- **Héberger les fichiers sur un serveur externe :** Placez vos fichiers HTML sur un serveur web accessible publiquement.
+- **Utiliser le plugin Confluence HTML Macro :** Si votre Confluence autorise l’utilisation de macros HTML, vous pouvez intégrer du HTML directement dans une page Confluence.
+
+---
+
+### 4. **Ajouter le HTML dans Confluence**
+#### Avec un serveur externe :  
+1. Hébergez vos fichiers HTML.  
+2. Intégrez un lien vers votre première page HTML dans Confluence :  
+   - Ajoutez un lien dans une page Confluence pointant vers l'URL de la page hébergée.
+
+#### Avec un plugin HTML Macro :  
+1. Activez la macro HTML dans Confluence (si autorisée).  
+2. Utilisez le code suivant dans la macro HTML pour intégrer la première page :  
+
+```html
+<iframe src="page1.html" width="100%" height="500px" frameborder="0"></iframe>
+```
+
+3. Le lien "Ouvrir la deuxième page" dans la première page ouvrira automatiquement la deuxième page dans un nouvel onglet.
+
+---
+
+### 5. **Test de la solution**
+- **Naviguez dans Confluence** : Cliquez sur le lien ou le bouton pour vous assurer que la deuxième page s’ouvre bien dans un nouvel onglet.  
+- **Résolution des problèmes** : Si la deuxième page ne s’ouvre pas, vérifiez que les fichiers HTML sont correctement hébergés et accessibles.
+
+Avec cette méthode, vous pouvez intégrer facilement des interactions entre des pages HTML dans Confluence.
