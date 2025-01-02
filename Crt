@@ -1,0 +1,177 @@
+Voici une solution complète qui inclut une page HTML pour télécharger un certificat au format PEM ou DER, effectuer la conversion en JWKS, et afficher le résultat. La page intègre un design simple et professionnel avec du CSS.
+
+### Fichier `index.html`
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Certificat PEM/DER vers JWKS</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+    header {
+      background-color: #0073e6;
+      color: white;
+      padding: 15px;
+      text-align: center;
+    }
+    main {
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 5px;
+    }
+    input[type="file"],
+    select,
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    button {
+      background-color: #0073e6;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #005bb5;
+    }
+    pre {
+      background-color: #f0f0f0;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Convertisseur Certificat PEM/DER vers JWKS</h1>
+  </header>
+  <main>
+    <div class="container">
+      <form id="converterForm">
+        <div class="form-group">
+          <label for="format">Format du certificat</label>
+          <select id="format">
+            <option value="pem">PEM</option>
+            <option value="der">DER</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="certFile">Téléchargez votre certificat</label>
+          <input type="file" id="certFile" accept=".pem,.der" />
+        </div>
+        <button type="button" id="convertButton">Convertir en JWKS</button>
+      </form>
+      <h3>Résultat :</h3>
+      <pre id="output">Aucun résultat pour l'instant...</pre>
+    </div>
+  </main>
+  <script>
+    document.getElementById("convertButton").addEventListener("click", async () => {
+      const format = document.getElementById("format").value;
+      const certFile = document.getElementById("certFile").files[0];
+      const output = document.getElementById("output");
+
+      if (!certFile) {
+        output.textContent = "Veuillez sélectionner un fichier.";
+        return;
+      }
+
+      const fileReader = new FileReader();
+      fileReader.onload = async (e) => {
+        try {
+          const certContent = e.target.result;
+          let binaryDer;
+
+          if (format === "pem") {
+            const pemHeader = "-----BEGIN CERTIFICATE-----";
+            const pemFooter = "-----END CERTIFICATE-----";
+            const pemContents = certContent
+              .replace(pemHeader, "")
+              .replace(pemFooter, "")
+              .replace(/\s+/g, "");
+            binaryDer = Uint8Array.from(atob(pemContents), (c) => c.charCodeAt(0));
+          } else {
+            binaryDer = new Uint8Array(e.target.result);
+          }
+
+          const cryptoKey = await crypto.subtle.importKey(
+            "spki",
+            binaryDer.buffer,
+            {
+              name: "RSASSA-PKCS1-v1_5",
+              hash: { name: "SHA-256" },
+            },
+            true,
+            ["verify"]
+          );
+
+          const jwk = await crypto.subtle.exportKey("jwk", cryptoKey);
+
+          const jwks = {
+            keys: [
+              {
+                ...jwk,
+                kid: "unique-key-id",
+                alg: "RS256",
+                use: "sig",
+              },
+            ],
+          };
+
+          output.textContent = JSON.stringify(jwks, null, 2);
+        } catch (err) {
+          output.textContent = `Erreur lors de la conversion : ${err.message}`;
+        }
+      };
+
+      if (format === "pem") {
+        fileReader.readAsText(certFile);
+      } else {
+        fileReader.readAsArrayBuffer(certFile);
+      }
+    });
+  </script>
+</body>
+</html>
+```
+
+### Fonctionnalités :
+1. **Choix du format** : L'utilisateur peut choisir entre PEM et DER.
+2. **Chargement de fichier** : L'utilisateur télécharge un certificat.
+3. **Conversion en JWKS** : Le script convertit le certificat en JWKS, avec affichage du résultat.
+
+### Instructions :
+1. Copiez ce code dans un fichier `index.html`.
+2. Ouvrez le fichier dans un navigateur.
+3. Sélectionnez le format et téléchargez un certificat pour obtenir le JWKS.
+
+Si vous souhaitez ajouter d'autres fonctionnalités, faites-le-moi savoir.
