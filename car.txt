@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JWT Decoder & Verifier</title>
+    <style>
+        /* Styling */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        textarea, input, select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: #fff;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .output-section {
+            margin-top: 20px;
+        }
+
+        .decoded-output {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 4px;
+            overflow: auto;
+            max-height: 300px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>JWT Decoder & Verifier</h1>
+
+    <label for="jwtInput">JWT:</label>
+    <textarea id="jwtInput" rows="4" placeholder="Paste your JWT"></textarea>
+
+    <label for="jwksUrlInput">JWKS URL:</label>
+    <input type="text" id="jwksUrlInput" placeholder="Enter the JWKS URL">
+
+    <label for="algorithm">Algorithm:</label>
+    <select id="algorithm">
+        <option value="RS256">RS256</option>
+        <option value="ES256">ES256</option>
+    </select>
+
+    <div>
+        <button id="decodeBtn">Decode JWT</button>
+        <button id="verifySignatureJwksBtn">Verify Signature (JWKS)</button>
+    </div>
+
+    <div class="output-section">
+        <h3>Decoded JWT:</h3>
+        <div class="decoded-output" id="decodedJWT">---</div>
+
+        <h3>Verification Status:</h3>
+        <div class="decoded-output" id="verificationStatus">---</div>
+    </div>
+</div>
+
+<script>
+    async function decodeJWT(jwt) {
+        const [header, payload] = jwt.split(".").map(part => JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/"))));
+        return { header, payload };
+    }
+
+    async function importJWK(jwk, algorithm) {
+        const keyParams = algorithm === "RS256" 
+            ? { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }
+            : { name: "ECDSA", namedCurve: "P-256" };
+
+        const publicKey = await crypto.subtle.importKey(
+            "jwk",
+            jwk,
+            keyParams,
+            false,
+            ["verify"]
+        );
+
+        return publicKey;
+    }
+
+    async function verifySignature(jwt, jwk, algorithm) {
+        const [header, payload, signature] = jwt.split(".");
+        const data = new TextEncoder().encode(`${header}.${payload}`);
+        const signatureBuffer = Uint8Array.from(atob(signature.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+        
+        const publicKey = await importJWK(jwk, algorithm);
+        const isValid = await crypto.subtle.verify(
+            algorithm === "RS256" ? "RSASSA-PKCS1-v1_5" : "ECDSA",
+            publicKey,
+            signatureBuffer,
+            data
+        );
+
+        return isValid;
+    }
+
+    async function fetchJWKS(jwksUrl) {
+        const response = await fetch(jwksUrl);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch JWKS: ${response.status}`);
+        }
+        const jwks = await response.json();
+        return jwks;
+    }
+
+    async function verifySignatureWithJWKS(jwt, jwksUrl, algorithm) {
+        const { header } = await decodeJWT(jwt);
+        const jwks = await fetchJWKS(jwksUrl);
+        const jwk = jwks.keys.find(key => key.kid === header.kid);
+
+        if (!jwk) {
+            throw new Error("No matching JWK found for the 'kid' in JWT.");
+        }
+
+        const isValid = await verifySignature(jwt, jwk, algorithm);
+        return isValid;
+    }
+
+    document.getElementById("decodeBtn").addEventListener("click", async () => {
+        const jwt = document.getElementById("jwtInput").value.trim();
+        try {
+            const { header, payload } = await decodeJWT(jwt);
+            document.getElementById("decodedJWT").textContent = JSON.stringify({ header, payload }, null, 2);
+            document.getElementById("verificationStatus").textContent = "JWT decoded successfully.";
+        } catch (error) {
+            document.getElementById("decodedJWT").textContent = "---";
+            document.getElementById("verificationStatus").textContent = "Error decoding JWT ❌";
+        }
+    });
+
+    document.getElementById("verifySignatureJwksBtn").addEventListener("click", async () => {
+        const jwt = document.getElementById("jwtInput").value.trim();
+        const jwksUrl = document.getElementById("jwksUrlInput").value.trim();
+        const algorithm = document.getElementById("algorithm").value;
+
+        try {
+            const isValid = await verifySignatureWithJWKS(jwt, jwksUrl, algorithm);
+            document.getElementById("verificationStatus").textContent = isValid 
+                ? "Valid Signature ✅" 
+                : "Invalid Signature ❌";
+        } catch (error) {
+            document.getElementById("verificationStatus").textContent = `Verification failed: ${error.message}`;
+        }
+    });
+</script>
+
+</body>
+</html>
