@@ -1,0 +1,142 @@
+Pour tester un exemple complet où un JWT signé par PingFederate est vérifié à l'aide d'une clé publique RSA avec JavaScript natif, voici une démonstration étape par étape.
+
+---
+
+### 1. Pré-requis
+- Un serveur PingFederate configuré pour émettre des JWT signés (`RS256`).
+- L'endpoint JWKS de PingFederate pour récupérer la clé publique (par exemple : `https://<your-domain>/pf/JWKS`).
+- Un JWT valide signé par PingFederate.
+
+---
+
+### 2. Exemple JavaScript complet avec test
+
+#### Étape 1 : Script complet
+
+```javascript
+// Récupérer JWKS depuis PingFederate
+async function fetchJWKS(jwksUrl) {
+    const response = await fetch(jwksUrl);
+    if (!response.ok) {
+        throw new Error('Échec de la récupération des JWKS');
+    }
+    return response.json();
+}
+
+// Trouver la clé correspondant au "kid" du JWT
+function findKeyInJWKS(jwks, kid) {
+    return jwks.keys.find(key => key.kid === kid);
+}
+
+// Importer une clé publique au format JWK
+async function importPublicKey(jwk) {
+    return await crypto.subtle.importKey(
+        'jwk',
+        jwk,
+        { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+        true,
+        ['verify']
+    );
+}
+
+// Vérifier la signature d'un JWT
+async function verifyJWT(jwt, publicKey) {
+    const [header, payload, signature] = jwt.split('.');
+    const encoder = new TextEncoder();
+    const data = encoder.encode(`${header}.${payload}`);
+    const signatureBuffer = Uint8Array.from(atob(signature.replace(/_/g, '/').replace(/-/g, '+')), c => c.charCodeAt(0));
+
+    return await crypto.subtle.verify(
+        'RSASSA-PKCS1-v1_5',
+        publicKey,
+        signatureBuffer,
+        data
+    );
+}
+
+// Décoder la partie header ou payload d'un JWT (Base64URL -> JSON)
+function decodeJWTPart(part) {
+    return JSON.parse(atob(part.replace(/_/g, '/').replace(/-/g, '+')));
+}
+
+// Test complet
+async function runTest() {
+    try {
+        // Étape 1 : JWT exemple (à remplacer par votre JWT réel)
+        const jwt = "<votre-jwt>";
+        
+        // Étape 2 : URL du JWKS PingFederate (remplacez par le vôtre)
+        const jwksUrl = "https://<your-domain>/pf/JWKS";
+        
+        // Étape 3 : Récupérer le JWKS
+        const jwks = await fetchJWKS(jwksUrl);
+
+        // Étape 4 : Extraire le kid du JWT
+        const [header] = jwt.split('.');
+        const { kid } = decodeJWTPart(header);
+
+        // Étape 5 : Trouver la clé publique dans le JWKS
+        const jwk = findKeyInJWKS(jwks, kid);
+        if (!jwk) throw new Error(`Clé avec kid=${kid} introuvable dans le JWKS`);
+
+        // Étape 6 : Importer la clé publique
+        const publicKey = await importPublicKey(jwk);
+
+        // Étape 7 : Vérifier la signature
+        const isValid = await verifyJWT(jwt, publicKey);
+        console.log('JWT valide ?', isValid);
+    } catch (error) {
+        console.error('Erreur lors de la vérification JWT:', error);
+    }
+}
+
+runTest();
+```
+
+---
+
+#### Étape 2 : Tester
+
+1. **Remplacez** les valeurs suivantes :
+   - `jwt` : un token JWT signé par PingFederate.
+   - `jwksUrl` : l'URL complète de l'endpoint JWKS de PingFederate.
+
+2. **Exécutez le script** :
+   - Vous pouvez copier ce script dans un fichier HTML et l’exécuter dans un navigateur.
+   - Ou utilisez un environnement Node.js compatible avec `fetch` et `Web Crypto API`.
+
+---
+
+### 3. Exemple de JWT et résultat attendu
+#### Exemple de JWT
+```plaintext
+eyJhbGciOiJSUzI1NiIsImtpZCI6ImtleS1pZC0xIn0.eyJzdWIiOiJ1c2VySWQiLCJleHAiOjE2MjUwMDAwMDB9.VeryLongSignatureHere
+```
+
+#### Exemple de réponse JWKS
+```json
+{
+  "keys": [
+    {
+      "kty": "RSA",
+      "kid": "key-id-1",
+      "n": "base64url-modulus",
+      "e": "base64url-exponent"
+    }
+  ]
+}
+```
+
+#### Résultat attendu
+Si le JWT est valide :
+```plaintext
+JWT valide ? true
+```
+Sinon :
+```plaintext
+JWT valide ? false
+```
+
+---
+
+Besoin d'aide pour tester un JWT spécifique ou intégrer cela dans votre projet ?
