@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify JWT Signature</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        textarea, input, button {
+            width: 100%;
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Verify JWT Signature</h1>
+    <textarea id="jwtInput" rows="4" placeholder="Enter your JWT"></textarea>
+    <input type="text" id="jwksUrlInput" placeholder="Enter the JWKS URL (optional)">
+    <textarea id="publicKeyInput" rows="4" placeholder="Enter your Public Key (PEM format, optional)"></textarea>
+    <button id="verifyBtn">Verify Signature</button>
+    <pre id="result">Result will appear here...</pre>
+
+    <script>
+        async function decodeJWT(jwt) {
+            const [header, payload] = jwt.split(".").map(part =>
+                JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/")))
+            );
+            return { header, payload };
+        }
+
+        async function fetchJWKS(jwksUrl, kid) {
+            const response = await fetch(jwksUrl);
+            if (!response.ok) throw new Error(`Failed to fetch JWKS: ${response.status}`);
+            const jwks = await response.json();
+            const jwk = jwks.keys.find(key => key.kid === kid);
+            if (!jwk) throw new Error("No matching JWK found for the given kid.");
+            return jwk;
+        }
+
+        async function importKey(jwk, alg) {
+            if (alg.startsWith("RS")) {
+                return crypto.subtle.importKey(
+                    "jwk",
+                    jwk,
+                    { name: "RSASSA-PKCS1-v1_5", hash: { name: "SHA-256" } },
+                    false,
+                    ["verify"]
+                );
+            } else if (alg.startsWith("ES")) {
+                return crypto.subtle.importKey(
+                    "jwk",
+                    jwk,
+                    { name: "ECDSA", namedCurve: "P-256" },
+                    false,
+                    ["verify"]
+                );
+            } else {
+                throw new Error(`Unsupported algorithm: ${alg}`);
+            }
+        }
+
+        async function verifyJWT(jwt, publicKey, alg) {
+            const [header, payload, signature] = jwt.split(".");
+            const data = new TextEncoder().encode(`${header}.${payload}`);
+            const signatureBuffer = Uint8Array.from(
+                atob(signature.replace(/-/g, "+").replace(/_/g, "/")),
+                c => c.charCodeAt(0)
+            );
+
+            return await crypto.subtle.verify(
+                alg.startsWith("RS") ? "RSASSA-PKCS1-v1_5" : "ECDSA",
+                publicKey,
+                signatureBuffer,
+                data
+            );
+        }
+
+        document.getElementById("verifyBtn").addEventListener("click", async () => {
+            const jwt = document.getElementById("jwtInput").value.trim();
+            const jwksUrl = document.getElementById("jwksUrlInput").value.trim();
+            const publicKeyPem = document.getElementById("publicKeyInput").value.trim();
+
+            try {
+                const { header } = await decodeJWT(jwt);
+                let publicKey;
+
+                if (publicKeyPem) {
+                    // Import PEM key
+                    const pemKey = publicKeyPem.replace(/-----\w+ PUBLIC KEY-----/g, "").replace(/\n/g, "");
+                    const keyBuffer = Uint8Array.from(atob(pemKey), c => c.charCodeAt(0));
+                    publicKey = await crypto.subtle.importKey(
+                        "spki",
+                        keyBuffer,
+                        { name: header.alg.startsWith("RS") ? "RSASSA-PKCS1-v1_5" : "ECDSA", hash: "SHA-256" },
+                        false,
+                        ["verify"]
+                    );
+                } else if (jwksUrl) {
+                    // Fetch key from JWKS
+                    const jwk = await fetchJWKS(jwksUrl, header.kid);
+                    publicKey = await importKey(jwk, header.alg);
+                } else {
+                    throw new Error("No public key or JWKS URL provided.");
+                }
+
+                const isValid = await verifyJWT(jwt, publicKey, header.alg);
+                document.getElementById("result").textContent = isValid
+                    ? "Valid Signature ✅"
+                    : "Invalid Signature ❌";
+            } catch (error) {
+                document.getElementById("result").textContent = `Error: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>
