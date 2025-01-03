@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSON Beautifier and Minifier</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 20px auto;
+      max-width: 1000px;
+    }
+    textarea, input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 1em;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1em;
+      cursor: pointer;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #output-container {
+      display: flex;
+      margin-top: 20px;
+    }
+    #line-numbers {
+      font-family: monospace;
+      background-color: #f0f0f0;
+      padding: 10px;
+      text-align: right;
+      color: #888;
+      border-right: 1px solid #ddd;
+      user-select: none;
+      width: 50px;
+      height: 100%;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+    #output {
+      font-size: 1.2em;
+      color: #333;
+      background-color: #f5f5f5;
+      padding: 15px;
+      border-radius: 5px;
+      border: 1px solid #ddd;
+      min-height: 150px;
+      width: calc(100% - 70px);
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: "Courier New", Courier, monospace;
+      text-align: left;
+      position: relative;
+    }
+    .json-output {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-size: 1em;
+      font-family: "Courier New", Courier, monospace;
+      text-align: left;
+    }
+    .key {
+      color: #d14;
+      font-weight: bold;
+    }
+    .value {
+      color: #4CAF50;
+    }
+    .object, .array {
+      cursor: pointer;
+      color: #007bff;
+    }
+    .collapsed {
+      display: none;
+    }
+    .copy-btn {
+      background-color: #28a745;
+    }
+    .copy-btn:hover {
+      background-color: #218838;
+    }
+    .collapse-icon {
+      cursor: pointer;
+      font-size: 16px;
+      color: #007bff;
+      margin-left: 5px;
+      user-select: none;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+  <h1>JSON Beautifier and Minifier</h1>
+  <p>Enter your JSON and choose to beautify or minify it:</p>
+
+  <textarea id="inputJson" placeholder="Enter your JSON here..."></textarea>
+
+  <div>
+    <button onclick="beautifyJson()">Beautify JSON</button>
+    <button onclick="minifyJson()">Minify JSON</button>
+    <button class="copy-btn" onclick="copyToClipboard()">Copy to Clipboard</button>
+  </div>
+
+  <div id="output-container">
+    <div id="line-numbers"></div>
+    <div id="output" class="json-output"></div>
+  </div>
+
+  <script>
+    function beautifyJson() {
+      const input = document.getElementById('inputJson').value;
+      try {
+        const parsedJson = JSON.parse(input); // Parse the input to JSON
+        const beautifiedJson = JSON.stringify(parsedJson, null, 2); // Beautify with 2 spaces indentation
+        const highlightedJson = highlightJson(beautifiedJson);
+        displayJson(highlightedJson);
+      } catch (e) {
+        document.getElementById('output').textContent = 'Invalid JSON';
+      }
+    }
+
+    function minifyJson() {
+      const input = document.getElementById('inputJson').value;
+      try {
+        const parsedJson = JSON.parse(input); // Parse the input to JSON
+        const minifiedJson = JSON.stringify(parsedJson); // Minify the JSON
+        const highlightedJson = highlightJson(minifiedJson);
+        displayJson(highlightedJson);
+      } catch (e) {
+        document.getElementById('output').textContent = 'Invalid JSON';
+      }
+    }
+
+    function highlightJson(jsonString) {
+      return jsonString
+        .replace(/"([^"]+)":/g, '<span class="key">"$1":</span>') // Style the keys
+        .replace(/: "(.*?)"/g, ': "<span class="value">$1</span>"') // Style the string values
+        .replace(/: (\d+)/g, ': <span class="value">$1</span>'); // Style the numeric values
+    }
+
+    function displayJson(jsonString) {
+      const outputContainer = document.getElementById('output');
+      let formattedJson = jsonString;
+      let lineNumbers = '';
+      let lineCounter = 1;
+
+      // Split the JSON string into lines and calculate line numbers
+      const lines = formattedJson.split('\n');
+      lines.forEach((line, index) => {
+        if (line.trim().match(/^".+":/) || line.trim().match(/[\{\[\}\]]/)) {
+          lineNumbers += lineCounter++ + '\n'; // Add line number for keys, [, ], {, }
+        } else {
+          lineNumbers += '\n'; // Leave an empty line for non-key values
+        }
+      });
+
+      // Add collapsible functionality for objects and arrays
+      const collapsedJson = addCollapsible(formattedJson);
+
+      document.getElementById('line-numbers').textContent = lineNumbers;
+      outputContainer.innerHTML = collapsedJson;
+    }
+
+    function copyToClipboard() {
+      const outputText = document.getElementById('output').textContent;
+      if (outputText && outputText !== 'Invalid JSON') {
+        const textArea = document.createElement('textarea');
+        textArea.value = outputText;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert('JSON copied to clipboard!');
+      } else {
+        alert('No valid JSON to copy!');
+      }
+    }
+
+    function toggleCollapse(element) {
+      const children = element.nextElementSibling;
+      if (children && children.classList.contains('collapsed')) {
+        children.classList.remove('collapsed');
+        element.innerHTML = '▼'; // Change to down arrow
+      } else if (children) {
+        children.classList.add('collapsed');
+        element.innerHTML = '▶'; // Change to right arrow
+      }
+    }
+
+    function addCollapsible(json) {
+      // Add collapsible functionality with a collapse icon for objects
+      json = json.replace(/"([^"]+)": \{[^}]*\}/g, (match, p1) => {
+        return `<span class="object" onclick="toggleCollapse(this)"><span class="collapse-icon">▶</span>${p1}:</span> ${match}`;
+      });
+      // Add collapsible functionality with a collapse icon for arrays
+      json = json.replace(/\[.*?\]/g, (match) => {
+        return `<span class="array" onclick="toggleCollapse(this)"><span class="collapse-icon">▶</span>${match}</span>`;
+      });
+      return json;
+    }
+  </script>
+</body>
+</html>
