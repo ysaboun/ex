@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSON Beautifier and Minifier</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 20px auto;
+      max-width: 800px;
+    }
+    textarea, input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 1em;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1em;
+      cursor: pointer;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #output {
+      margin-top: 20px;
+      font-size: 1.2em;
+      color: #333;
+    }
+    .json-output {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-size: 1em;
+      font-family: "Courier New", Courier, monospace;
+      text-align: left;
+    }
+    .key {
+      color: #d14;
+      font-weight: bold;
+    }
+    .value {
+      color: #4CAF50;
+    }
+  </style>
+</head>
+<body>
+  <h1>JSON Beautifier and Minifier</h1>
+  <p>Enter your JSON and choose to beautify or minify it:</p>
+
+  <textarea id="inputJson" placeholder="Enter your JSON here..."></textarea>
+
+  <div>
+    <button onclick="beautifyJson()">Beautify JSON</button>
+    <button onclick="minifyJson()">Minify JSON</button>
+  </div>
+
+  <div id="output" class="json-output"></div>
+
+  <script>
+    function beautifyJson() {
+      const input = document.getElementById('inputJson').value;
+      try {
+        const parsedJson = JSON.parse(input); // Parse the input to JSON
+        const beautifiedJson = JSON.stringify(parsedJson, null, 2); // Beautify with 2 spaces indentation
+        document.getElementById('output').innerHTML = highlightJson(beautifiedJson);
+      } catch (e) {
+        document.getElementById('output').textContent = 'Invalid JSON';
+      }
+    }
+
+    function minifyJson() {
+      const input = document.getElementById('inputJson').value;
+      try {
+        const parsedJson = JSON.parse(input); // Parse the input to JSON
+        const minifiedJson = JSON.stringify(parsedJson); // Minify the JSON
+        document.getElementById('output').innerHTML = highlightJson(minifiedJson);
+      } catch (e) {
+        document.getElementById('output').textContent = 'Invalid JSON';
+      }
+    }
+
+    // Function to highlight JSON syntax with different styles for keys and values
+    function highlightJson(jsonString) {
+      return jsonString
+        .replace(/"([^"]+)":/g, '<span class="key">"$1":</span>') // Style the keys
+        .replace(/: "(.*?)"/g, ': "<span class="value">$1</span>"') // Style the string values
+        .replace(/: (\d+)/g, ': <span class="value">$1</span>'); // Style the numeric values
+    }
+  </script>
+</body>
+</html>
