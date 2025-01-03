@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSON Beautifier and Minifier</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      text-align: center;
+      margin: 20px auto;
+      max-width: 900px;
+      background-color: #f4f7f6;
+    }
+    textarea, input {
+      width: 100%;
+      padding: 15px;
+      margin: 15px 0;
+      font-size: 1.1em;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-sizing: border-box;
+      background-color: #ffffff;
+      transition: all 0.3s ease;
+      font-family: 'Courier New', Courier, monospace;
+    }
+    textarea {
+      min-height: 200px;
+      max-height: 300px;
+      resize: vertical;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    textarea:focus {
+      border-color: #007BFF;
+      box-shadow: 0 0 10px rgba(0, 123, 255, 0.4);
+      outline: none;
+    }
+    input {
+      height: 40px;
+    }
+    button {
+      padding: 12px 25px;
+      font-size: 1em;
+      cursor: pointer;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      margin: 10px 5px;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #218838;
+    }
+    #output-container {
+      display: flex;
+      flex-direction: column;
+      margin-top: 20px;
+      border-radius: 8px;
+      background-color: #ffffff;
+      border: 1px solid #ddd;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+    }
+    #output {
+      font-size: 1.1em;
+      color: #333;
+      background-color: #f9f9f9;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: "Courier New", Courier, monospace;
+      text-align: left;
+      max-height: 400px;
+      overflow-y: auto;
+      transition: background-color 0.3s ease;
+    }
+    .error {
+      color: red;
+      font-size: 1em;
+      margin-top: 15px;
+    }
+    .json-output {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-size: 1em;
+      font-family: "Courier New", Courier, monospace;
+      text-align: left;
+    }
+    .key {
+      color: #d14;
+      font-weight: bold;
+    }
+    .value {
+      color: #4CAF50;
+    }
+    .copy-btn {
+      background-color: #007BFF;
+    }
+    .copy-btn:hover {
+      background-color: #0056b3;
+    }
+    #valid-message {
+      display: none;
+      color: green;
+      font-size: 1.1em;
+      font-weight: bold;
+      margin-top: 15px;
+    }
+    .highlight-error {
+      background-color: yellow;
+      color: red;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>JSON Beautifier and Minifier</h1>
+  <p>Enter your JSON and choose to beautify, minify or validate it:</p>
+
+  <textarea id="inputJson" placeholder="Enter your JSON here..."></textarea>
+
+  <div>
+    <button onclick="beautifyJson()">Beautify JSON</button>
+    <button onclick="minifyJson()">Minify JSON</button>
+    <button onclick="validateJson()">Validate JSON</button>
+    <button class="copy-btn" onclick="copyToClipboard()">Copy to Clipboard</button>
+  </div>
+
+  <div id="output-container">
+    <div id="output" class="json-output"></div>
+    <div id="error-message" class="error"></div>
+    <div id="valid-message">JSON is valid!</div>
+  </div>
+
+  <script>
+    function beautifyJson() {
+      const input = document.getElementById('inputJson').value;
+      try {
+        const parsedJson = JSON.parse(input); // Parse the input to JSON
+        const beautifiedJson = JSON.stringify(parsedJson, null, 2); // Beautify with 2 spaces indentation
+        const highlightedJson = highlightJson(beautifiedJson);
+        displayJson(highlightedJson);
+        clearError();
+      } catch (e) {
+        displayError(e, input);
+      }
+    }
+
+    function minifyJson() {
+      const input = document.getElementById('inputJson').value;
+      try {
+        const parsedJson = JSON.parse(input); // Parse the input to JSON
+        const minifiedJson = JSON.stringify(parsedJson); // Minify the JSON
+        const highlightedJson = highlightJson(minifiedJson);
+        displayJson(highlightedJson);
+        clearError();
+      } catch (e) {
+        displayError(e, input);
+      }
+    }
+
+    function validateJson() {
+      const input = document.getElementById('inputJson').value;
+      try {
+        JSON.parse(input); // Try to parse the JSON
+        checkMissingValues(input); // Check for missing values
+        clearError();
+        document.getElementById('valid-message').style.display = 'block';
+        document.getElementById('output').style.display = 'none'; // Hide the output container
+      } catch (e) {
+        displayError(e, input);
+        document.getElementById('output').style.display = 'block'; // Show the output container if there's an error
+      }
+    }
+
+    function highlightJson(jsonString) {
+      return jsonString
+        .replace(/"([^"]+)":/g, '<span class="key">"$1":</span>') // Style the keys
+        .replace(/: "(.*?)"/g, ': "<span class="value">$1</span>"') // Style the string values
+        .replace(/: (\d+)/g, ': <span class="value">$1</span>'); // Style the numeric values
+    }
+
+    function displayJson(jsonString) {
+      const outputContainer = document.getElementById('output');
+      outputContainer.innerHTML = jsonString;
+      document.getElementById('valid-message').style.display = 'none'; // Hide the valid message
+    }
+
+    function displayError(error, inputJson) {
+      const errorMessage = document.getElementById('error-message');
+      const errorPosition = error.message.match(/position (\d+)/); // Fix regex to match correct position format
+      const errorContext = getErrorContext(inputJson, errorPosition);
+
+      // If there's an error position and context, display it
+      if (errorContext) {
+        const highlightedJson = highlightJsonWithError(inputJson, errorContext);
+        errorMessage.innerHTML = `Invalid JSON! Error: ${error.message}`;
+        errorMessage.style.display = 'block';
+        document.getElementById('valid-message').style.display = 'none'; // Hide the valid message if error exists
+        document.getElementById('output').innerHTML = highlightedJson;
+      } else {
+        errorMessage.textContent = `Invalid JSON! Error: ${error.message}`;
+        errorMessage.style.display = 'block';
+        document.getElementById('valid-message').style.display = 'none'; // Hide the valid message if error exists
+      }
+    }
+
+    function highlightJsonWithError(inputJson, errorContext) {
+      const safeContext = escapeRegExp(errorContext); // Escape special characters in error context
+      const errorPattern = new RegExp(`(${safeContext})`, 'g');
+      const highlightedJson = inputJson.replace(errorPattern, '<span class="highlight-error">$1</span>');
+      return highlightedJson;
+    }
+
+    function escapeRegExp(str) {
+      return str.replace(/[.*+?^=!:${}()|\[\]\/\\]/g, "\\$&"); // Escape regex special characters
+    }
+
+    function getErrorContext(inputJson, errorPosition) {
+      const position = parseInt(errorPosition[1], 10); // Get the error position
+      if (position > 0) {
+        const start = Math.max(position - 50, 0); // Get a 50-character window before the error
+        const end = Math.min(position + 50, inputJson.length); // Get a 50-character window after the error
+        const errorContext = inputJson.substring(start, end);
+        return errorContext; // Return the context surrounding the error
+      }
+      return null;
+    }
+
+    function checkMissingValues(jsonString) {
+      const parsedJson = JSON.parse(jsonString);
+      const missingValueKeys = [];
+      
+      // Check if any key has a missing or invalid value
+      for (let key in parsedJson) {
+        if (parsedJson.hasOwnProperty(key)) {
+          const value = parsedJson[key];
+          // If value is missing or not properly assigned, mark it
+          if (value === undefined || value === null || value === "" || (typeof value === 'boolean') || (typeof value === 'number')) {
+            missingValueKeys.push(key);
+          }
+        }
+      }
+
+      if (missingValueKeys.length > 0) {
+        document.getElementById('error-message').innerHTML = `Invalid JSON! Missing values for keys: ${missingValueKeys.join(', ')}`;
+        document.getElementById('error-message').style.display = 'block';
+        document.getElementById('valid-message').style.display = 'none';
+        throw new Error('Missing value(s) detected');
+      }
+    }
+
+    function clearError() {
+      document.getElementById('error-message').textContent = '';
+      document.getElementById('error-message').style.display = 'none';
+      document.getElementById('valid-message').style.display = 'block'; // Show the valid message if no error
+    }
+
+    function copyToClipboard() {
+      const outputText = document.getElementById('output').textContent;
+      if (outputText && outputText !== 'Invalid JSON') {
+        const textArea = document.createElement('textarea');
+        textArea.value = outputText;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert('JSON copied to clipboard!');
+      } else {
+        alert('No valid JSON to copy!');
+      }
+    }
+  </script>
+</body>
+</html>
