@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Base64 Encode/Decode</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 50px auto;
+      max-width: 600px;
+    }
+    textarea {
+      width: 100%;
+      height: 100px;
+      margin: 10px 0;
+      font-size: 1em;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      font-size: 1em;
+      cursor: pointer;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #output {
+      margin-top: 20px;
+      font-size: 1.2em;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <h1>Base64 Encode/Decode Tool</h1>
+  <p>Enter text to encode or decode using Base64:</p>
+  <textarea id="input" placeholder="Enter your text here..."></textarea>
+  <br>
+  <button onclick="encodeBase64()">Encode</button>
+  <button onclick="decodeBase64()">Decode</button>
+  <p id="output">Output will appear here</p>
+
+  <script>
+    // Function to encode text to Base64
+    function encodeBase64() {
+      const input = document.getElementById('input').value;
+      try {
+        const encoded = btoa(input); // Encode to Base64
+        document.getElementById('output').textContent = `Encoded: ${encoded}`;
+      } catch (e) {
+        document.getElementById('output').textContent = 'Error: Invalid input for encoding.';
+      }
+    }
+
+    // Function to decode Base64 to text
+    function decodeBase64() {
+      const input = document.getElementById('input').value;
+      try {
+        const decoded = atob(input); // Decode from Base64
+        document.getElementById('output').textContent = `Decoded: ${decoded}`;
+      } catch (e) {
+        document.getElementById('output').textContent = 'Error: Invalid Base64 string.';
+      }
+    }
+  </script>
+</body>
+</html>
