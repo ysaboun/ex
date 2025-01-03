@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RegExp Tester</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 50px auto;
+      max-width: 800px;
+    }
+    textarea, input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 1em;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1em;
+      cursor: pointer;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #output {
+      margin-top: 20px;
+      font-size: 1.2em;
+      color: #333;
+    }
+    .error {
+      color: red;
+    }
+    .success {
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <h1>JavaScript RegExp Tester</h1>
+  <p>Enter your regular expression and test it against a string:</p>
+
+  <input id="regexp" type="text" placeholder="Enter your regular expression (e.g., \\d+)" />
+  <input id="flags" type="text" placeholder="Enter flags (e.g., g, i, m)" />
+  <textarea id="testString" placeholder="Enter the string to test..."></textarea>
+  
+  <button onclick="testRegExp()">Test</button>
+  <button onclick="clearFields()">Clear</button>
+
+  <div id="output"></div>
+
+  <script>
+    function testRegExp() {
+      const regexpInput = document.getElementById('regexp').value;
+      const flagsInput = document.getElementById('flags').value;
+      const testString = document.getElementById('testString').value;
+      const outputDiv = document.getElementById('output');
+
+      try {
+        const regexp = new RegExp(regexpInput, flagsInput); // Create the RegExp object
+        const matches = testString.match(regexp); // Test the string
+
+        if (matches) {
+          outputDiv.innerHTML = `
+            <p class="success">Match found!</p>
+            <p><strong>Matches:</strong> ${matches.join(', ')}</p>
+          `;
+        } else {
+          outputDiv.innerHTML = `<p class="error">No match found.</p>`;
+        }
+      } catch (error) {
+        outputDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+      }
+    }
+
+    function clearFields() {
+      document.getElementById('regexp').value = '';
+      document.getElementById('flags').value = '';
+      document.getElementById('testString').value = '';
+      document.getElementById('output').innerHTML = '';
+    }
+  </script>
+</body>
+</html>
